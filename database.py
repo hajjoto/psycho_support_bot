@@ -1,49 +1,62 @@
-import sqlite3
-from datetime import datetime
+import asyncpg
 
-DB_NAME = "support_bot.db"
-
-
-def init_db():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS requests (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        category TEXT,
-        message TEXT,
-        created_at TEXT
-    )
-    """)
-
-    conn.commit()
-    conn.close()
+from config import DATABASE_URL
 
 
-def save_request(user_id: int, category: str, message: str):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    INSERT INTO requests (user_id, category, message, created_at)
-    VALUES (?, ?, ?, ?)
-    """, (user_id, category, message, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-
-    conn.commit()
-    conn.close()
+pool = None
 
 
-def get_all_requests():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
+async def init_db():
+    global pool
 
-    cursor.execute("""
-    SELECT id, category, message, created_at FROM requests
-    ORDER BY id DESC
-    """)
+    pool = await asyncpg.create_pool(DATABASE_URL)
 
-    data = cursor.fetchall()
-    conn.close()
-    return data
+    async with pool.acquire() as conn:
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS sessions (
+            id SERIAL PRIMARY KEY,
+            session_id TEXT UNIQUE NOT NULL,
+            risk_level TEXT,
+            status TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS messages (
+            id SERIAL PRIMARY KEY,
+            session_id TEXT NOT NULL,
+            role TEXT NOT NULL,
+            text TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+
+
+async def create_session(session_id: str):
+    async with pool.acquire() as conn:
+        await conn.execute("""
+        INSERT INTO sessions (session_id, status)
+        VALUES ($1, $2)
+        ON CONFLICT (session_id) DO NOTHING;
+        """, session_id, "started")
+
+
+async def save_message(session_id: str, role: str, text: str):
+    async with pool.acquire() as conn:
+        await conn.execute("""
+        INSERT INTO messages (session_id, role, text)
+        VALUES ($1, $2, $3);
+        """, session_id, role, text)
+
+
+async def update_session_risk(session_id: str, risk_level: str, status: str):
+    async with pool.acquire() as conn:
+        await conn.execute("""
+        UPDATE sessions
+        SET risk_level = $1,
+            status = $2,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE session_id = $3;
+        """, risk_level, status, session_id)
