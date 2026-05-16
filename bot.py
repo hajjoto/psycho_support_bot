@@ -2,48 +2,132 @@ import asyncio
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
-from aiogram.filters import CommandStart, Command
+from aiogram.filters import CommandStart
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.storage.memory import MemoryStorage
 
-from config import BOT_TOKEN, ADMIN_ID
-from database import init_db, save_request, get_all_requests
+from config import BOT_TOKEN
+from states import SupportDialog
 
 
 bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher()
+dp = Dispatcher(storage=MemoryStorage())
 
 
-main_keyboard = ReplyKeyboardMarkup(
+start_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Тривога"), KeyboardButton(text="Стрес")],
-        [KeyboardButton(text="Самотність"), KeyboardButton(text="Проблеми у відносинах")],
-        [KeyboardButton(text="Написати звернення")],
-        [KeyboardButton(text="Допомога")]
+        [KeyboardButton(text="Почати")]
     ],
     resize_keyboard=True
 )
 
 
-user_categories = {}
+problem_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="Завершити діалог")]
+    ],
+    resize_keyboard=True
+)
 
-CRISIS_WORDS = [
+
+restart_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="Почати нову сесію")]
+    ],
+    resize_keyboard=True
+)
+
+
+HIGH_RISK_WORDS = [
     "хочу умереть",
     "хочу померти",
-    "покончить с собой",
-    "накласти на себе руки",
-    "суицид",
-    "самогубство",
     "не хочу жить",
     "не хочу жити",
+    "суицид",
+    "самогубство",
     "убить себя",
-    "вбити себе"
+    "вбити себе",
+    "покончить с собой",
+    "накласти на себе руки",
+    "самоповреждение",
+    "самоушкодження"
 ]
+
+
+MEDIUM_RISK_WORDS = [
+    "паника",
+    "паніка",
+    "паническая атака",
+    "панічна атака",
+    "сильная тревога",
+    "сильна тривога",
+    "бессонница",
+    "безсоння",
+    "не справляюсь",
+    "не справляюся",
+    "очень плохо",
+    "дуже погано"
+]
+
+
+LOW_RISK_WORDS = [
+    "стресс",
+    "стрес",
+    "усталость",
+    "втома",
+    "одиночество",
+    "самотність",
+    "отношения",
+    "відносини",
+    "тревога",
+    "тривога",
+    "грусть",
+    "сум"
+]
+
+def analyze_risk(text: str) -> str:
+    text = text.lower()
+
+    if any(word in text for word in HIGH_RISK_WORDS):
+        return "HIGH"
+
+    if any(word in text for word in MEDIUM_RISK_WORDS):
+        return "MEDIUM"
+
+    if any(word in text for word in LOW_RISK_WORDS):
+        return "LOW"
+
+    return "LOW"
+
+
+def get_recommendation(risk_level: str) -> str:
+    if risk_level == "MEDIUM":
+        return (
+            "Ваш стан виглядає напруженим. Спробуйте техніку grounding 5-4-3-2-1:\n\n"
+            "5 речей, які ви бачите\n"
+            "4 речі, які можете відчути тілом\n"
+            "3 звуки, які чуєте\n"
+            "2 запахи\n"
+            "1 річ, яку можете назвати про себе зараз\n\n"
+            "Також зробіть дихання: вдих 4 секунди, видих 6 секунд. Повторіть 5 разів.\n\n"
+            "Якщо стан не проходить або посилюється, зверніться до психолога або лікаря."
+        )
+
+    return (
+        "Схоже, ваш стан не є критичним, але вам потрібна підтримка.\n\n"
+        "Спробуйте:\n"
+        "1. Записати, що саме вас турбує.\n"
+        "2. Відділити факти від думок.\n"
+        "3. Зробити коротку прогулянку або паузу.\n"
+        "4. Поговорити з людиною, якій довіряєте.\n\n"
+        "Дихальна вправа: вдих на 4 секунди, видих на 6 секунд, 5 повторів."
+    )
 
 
 CRISIS_TEXT = (
     "Мені дуже шкода, що вам зараз настільки важко.\n\n"
     "Я не можу допомагати з діями, які можуть нашкодити вам.\n\n"
-    "Зараз важливо не залишатися наодинці. "
-    "Зателефонуйте до служби екстреної допомоги або зверніться до близької людини поруч.\n\n"
+    "Зараз важливо не залишатися наодинці. Зверніться до людини поруч або до екстрених служб.\n\n"
     "Україна:\n"
     "Екстрена допомога: 112 або 103\n"
     "Lifeline Ukraine: 7333\n\n"
@@ -51,122 +135,113 @@ CRISIS_TEXT = (
 )
 
 
-def is_crisis_message(text: str) -> bool:
-    text = text.lower()
-    return any(word in text for word in CRISIS_WORDS)
-
 @dp.message(CommandStart())
-async def start(message: Message):
-    await message.answer(
-        "Вытаю. Це анонімний бот психологічної підтримки.\n\n"
-        "Оберіть тему або натисніть «Написати звернення».\n\n"
-        "Важливо: бот не замінює психолога або лікаря, але він допомагає. "
-        "Якщо є загроза життю чи здоровʼю зверніться до екстрених служб.",
-        reply_markup=main_keyboard
-    )
-
-@dp.message()
-async def save_user_message(message: Message):
-    if is_crisis_message(message.text):
-        await message.answer(CRISIS_TEXT)
-        return
-
-    user_id = message.from_user.id
-    category = user_categories.get(user_id, "Без категорії")
-
-    save_request(
-        user_id=user_id,
-        category=category,
-        message=message.text
-    )
+async def start(message: Message, state: FSMContext):
+    await state.clear()
+    await state.set_state(SupportDialog.consent)
 
     await message.answer(
-        "Ваше звернення збережено.\n\n"
-        "Спробуйте зараз зробити коротку паузу: "
-        "повільний вдих на 4 секунди, видих на 6 секунд, повторити 5 разів.\n\n"
-        "Якщо ситуація критична або є ризик нашкодити собі — зверніться до екстреної допомоги."
+        "Вітаю. Це бот анонімної психологічної підтримки.\n\n"
+        "Бот не просить ваше імʼя, телефон, адресу або інші персональні дані.\n"
+        "Ваше повідомлення використовується тільки для поточного діалогу.\n\n"
+        "Бот не замінює психолога або лікаря. "
+        "У кризових ситуаціях потрібно звертатися до екстрених служб.\n\n"
+        "Щоб почати, натисніть «Почати».",
+        reply_markup=start_keyboard
     )
 
-@dp.message(F.text.in_(["Тривога", "Стрес", "Самотність", "Проблеми у відносинах"]))
-async def choose_category(message: Message):
-    user_categories[message.from_user.id] = message.text
+
+@dp.message(SupportDialog.consent, F.text == "Почати")
+async def process_consent(message: Message, state: FSMContext):
+    await state.set_state(SupportDialog.collecting_problem)
 
     await message.answer(
-        f"Категорія обрана: {message.text}\n\n"
-        "Тепер напишіть, що вас турбує. "
-        "Не вказуйте імʼя, адресу, телефон або інші особисті дані."
+        "Опишіть у кількох словах, що вас зараз турбує.\n\n"
+        "Не вказуйте імʼя, телефон, адресу або інші персональні дані.",
+        reply_markup=problem_keyboard
     )
 
 
-@dp.message(F.text == "Написати звернення")
-async def write_request(message: Message):
-    user_categories[message.from_user.id] = "Загальне звернення"
+@dp.message(SupportDialog.consent)
+async def wrong_consent_message(message: Message):
+    await message.answer(
+        "Щоб почати діалог, натисніть кнопку «Почати».",
+        reply_markup=start_keyboard
+    )
+
+
+@dp.message(SupportDialog.collecting_problem, F.text == "Завершити діалог")
+async def finish_from_problem(message: Message, state: FSMContext):
+    await state.set_state(SupportDialog.finished)
 
     await message.answer(
-        "Напишіть ваше звернення одним повідомленням.\n\n"
-        "Не вказуйте персональні дані."
+        "Діалог завершено. Ви можете почати нову сесію будь-коли.",
+        reply_markup=restart_keyboard
     )
 
 
-@dp.message(F.text == "Допомога")
-async def help_message(message: Message):
-    await message.answer(
-        "Як користуватися ботом:\n\n"
-        "1. Оберіть категорію проблеми.\n"
-        "2. Напишіть звернення.\n"
-        "3. Бот збереже його анонімно.\n"
-        "4. Адміністратор зможе переглянути звернення.\n\n"
-        "У кризовій ситуації звертайтесь до екстрених служб."
+@dp.message(SupportDialog.collecting_problem)
+async def collect_problem(message: Message, state: FSMContext):
+    problem_text = message.text
+    risk_level = analyze_risk(problem_text)
+
+    await state.update_data(
+        problem_text=problem_text,
+        risk_level=risk_level
     )
 
+    if risk_level == "HIGH":
+        await state.set_state(SupportDialog.crisis_mode)
 
-@dp.message(Command("admin"))
-async def admin_panel(message: Message):
-    if message.from_user.id != ADMIN_ID:
-        await message.answer("У вас немає доступу.")
-        return
-
-    requests = get_all_requests()
-
-    if not requests:
-        await message.answer("Звернень поки немає.")
-        return
-
-    text = "Останні звернення:\n\n"
-
-    for request in requests[:10]:
-        request_id, category, user_message, created_at = request
-        text += (
-            f"ID: {request_id}\n"
-            f"Категорія: {category}\n"
-            f"Дата: {created_at}\n"
-            f"Текст: {user_message}\n\n"
+        await message.answer(
+            CRISIS_TEXT,
+            reply_markup=restart_keyboard
         )
 
-    await message.answer(text)
+        await state.set_state(SupportDialog.finished)
+        return
+
+    await state.set_state(SupportDialog.recommendations)
+
+    recommendation = get_recommendation(risk_level)
+
+    await message.answer(
+        f"Рівень ризику: {risk_level}\n\n"
+        f"{recommendation}",
+        reply_markup=restart_keyboard
+    )
+
+    await state.set_state(SupportDialog.finished)
+
+
+@dp.message(SupportDialog.finished, F.text == "Почати нову сесію")
+async def restart_session(message: Message, state: FSMContext):
+    await start(message, state)
+
+
+@dp.message(SupportDialog.finished)
+async def finished_message(message: Message):
+    await message.answer(
+        "Поточний діалог завершено. Щоб почати заново, натисніть «Почати нову сесію».",
+        reply_markup=restart_keyboard
+    )
 
 
 @dp.message()
-async def save_user_message(message: Message):
-    user_id = message.from_user.id
-    category = user_categories.get(user_id, "Без категорії")
+async def unknown_message(message: Message, state: FSMContext):
+    current_state = await state.get_state()
 
-    save_request(
-        user_id=user_id,
-        category=category,
-        message=message.text
-    )
-
-    await message.answer(
-        "Ваше звернення збережено.\n\n"
-        "Спробуйте зараз зробити коротку паузу: "
-        "повільний вдих на 4 секунди, видих на 6 секунд, повторити 5 разів.\n\n"
-        "Якщо ситуація критична або є ризик нашкодити собі — зверніться до екстреної допомоги."
-    )
+    if current_state is None:
+        await message.answer(
+            "Натисніть /start, щоб почати діалог."
+        )
+    else:
+        await message.answer(
+            "Я не зрозумів повідомлення. Натисніть /start, щоб почати заново."
+        )
 
 
 async def main():
-    init_db()
     await dp.start_polling(bot)
 
 
