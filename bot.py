@@ -1,4 +1,6 @@
 import asyncio
+import logging
+
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message
 from aiogram.filters import CommandStart
@@ -7,6 +9,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from config import BOT_TOKEN
 from states import SupportDialog
+from logger_config import setup_logger
 from risk_analyzer import analyze_risk
 from recommendations import get_recommendation
 from session_service import create_session_id
@@ -43,6 +46,8 @@ async def process_consent(message: Message, state: FSMContext):
         session_id=session_id
     )
 
+    logging.info(f"New anonymous session created: {session_id}")
+
     await message.answer(
         "Опишіть у кількох словах, що вас зараз турбує.\n\n"
         "Не вказуйте імʼя, телефон, адресу або інші персональні дані.",
@@ -72,6 +77,8 @@ async def finish_from_problem(message: Message, state: FSMContext):
 async def collect_problem(message: Message, state: FSMContext):
     problem_text = message.text
     risk_level = analyze_risk(problem_text)
+
+    logging.info(f"Risk level detected: {risk_level}")
 
     await state.update_data(
         problem_text=problem_text,
@@ -125,6 +132,8 @@ async def unknown_message(message: Message, state: FSMContext):
 
 
 async def main():
+    setup_logger()
+    logging.info("Bot started")
     await dp.start_polling(bot)
 
 
