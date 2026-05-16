@@ -14,6 +14,7 @@ from risk_analyzer import analyze_risk
 from recommendations import get_recommendation
 from session_service import create_session_id
 from keyboards import start_keyboard, problem_keyboard, restart_keyboard
+from database import init_db, create_session, save_message, update_session_risk
 
 
 bot = Bot(token=BOT_TOKEN)
@@ -42,6 +43,8 @@ async def process_consent(message: Message, state: FSMContext):
 
     session_id = create_session_id()
 
+    await create_session(session_id)
+
     await state.update_data(
         session_id=session_id
     )
@@ -65,6 +68,12 @@ async def wrong_consent_message(message: Message):
 
 @dp.message(SupportDialog.collecting_problem, F.text == "Завершити діалог")
 async def finish_from_problem(message: Message, state: FSMContext):
+    data = await state.get_data()
+    session_id = data.get("session_id")
+
+    if session_id:
+        await update_session_risk(session_id, "UNKNOWN", "finished_by_user")
+
     await state.set_state(SupportDialog.finished)
 
     await message.answer(
@@ -76,6 +85,10 @@ async def finish_from_problem(message: Message, state: FSMContext):
 @dp.message(SupportDialog.collecting_problem)
 async def collect_problem(message: Message, state: FSMContext):
     problem_text = message.text
+
+    data = await state.get_data()
+    session_id = data.get("session_id")
+
     risk_level = analyze_risk(problem_text)
 
     logging.info(f"Risk level detected: {risk_level}")
@@ -86,6 +99,11 @@ async def collect_problem(message: Message, state: FSMContext):
     )
 
     recommendation = get_recommendation(risk_level)
+
+    if session_id:
+        await save_message(session_id, "user", problem_text)
+        await save_message(session_id, "bot", recommendation)
+        await update_session_risk(session_id, risk_level, "finished")
 
     if risk_level == "HIGH":
         await state.set_state(SupportDialog.crisis_mode)
@@ -134,6 +152,10 @@ async def unknown_message(message: Message, state: FSMContext):
 async def main():
     setup_logger()
     logging.info("Bot started")
+
+    await init_db()
+    logging.info("Database initialized")
+
     await dp.start_polling(bot)
 
 
