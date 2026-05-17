@@ -15,7 +15,7 @@ from recommendations import (
     CRISIS_TEXT,
     get_branch_intro,
     get_recommendation,
-    ADDITIONAL_SUPPORT_TEXT,
+    get_followup_support,
     build_summary
 )
 from session_service import create_session_id
@@ -85,7 +85,7 @@ async def start(message: Message, state: FSMContext):
         "Бот не просить ваше імʼя, телефон, адресу або інші персональні дані.\n"
         "Ваші повідомлення використовуються для поточного діалогу та анонімної сесії.\n\n"
         "Бот не замінює психолога або лікаря. "
-        "Але вам нічого не допоможе якщо батьки вас назвали Світлана. "
+        "Але вам нічого не допоможе якщо батьки вас назвали Світлана."
         "У кризових ситуаціях потрібно звертатися до екстрених служб.\n\n"
         "Щоб почати, натисніть «Почати».",
         reply_markup=start_keyboard
@@ -212,7 +212,7 @@ async def impact_check(message: Message, state: FSMContext):
     await state.set_state(SupportDialog.scale_check)
 
     await message.answer(
-        "Оцініть свій стан зараз від 1 до 10, де 10 — максимально важко.",
+        "Оцініть свій стан зараз від 1 до 10, де 10 - максимально важко.",
         reply_markup=dialog_keyboard
     )
 
@@ -355,17 +355,18 @@ async def feedback_not_better(message: Message, state: FSMContext):
     data = await state.get_data()
     session_id = data.get("session_id")
 
+    followup_text = get_followup_support(data.get("branch", "UNCLEAR"))
+
     if session_id:
         await save_message(session_id, "user", message.text, "feedback")
-        await save_message(session_id, "bot", ADDITIONAL_SUPPORT_TEXT, "additional_support")
+        await save_message(session_id, "bot", followup_text, "additional_support")
 
     await state.set_state(SupportDialog.additional_support)
 
     await message.answer(
-        ADDITIONAL_SUPPORT_TEXT + "\n\nПісля цього напишіть будь-яке повідомлення, і я підсумую діалог.",
+        followup_text + "\n\nПісля цього напишіть будь-яке повідомлення, і я підсумую діалог.",
         reply_markup=dialog_keyboard
     )
-
 
 @dp.message(SupportDialog.additional_support)
 async def additional_support(message: Message, state: FSMContext):
