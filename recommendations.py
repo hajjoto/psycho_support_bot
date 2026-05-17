@@ -1,6 +1,8 @@
-import random
-
-from support_strategies import LOW_SUPPORT, MEDIUM_SUPPORT
+from support_strategies import (
+    get_low_support,
+    get_medium_support,
+    get_additional_support,
+)
 
 
 CRISIS_TEXT = (
@@ -12,16 +14,6 @@ CRISIS_TEXT = (
     "Екстрена допомога: 112 або 103\n"
     "Lifeline Ukraine: 7333\n\n"
     "Якщо є негайна небезпека — телефонуйте 112 прямо зараз."
-)
-
-
-ADDITIONAL_SUPPORT_TEXT = (
-    "Спробуйте ще одну коротку техніку.\n\n"
-    "Поставте ноги на підлогу.\n"
-    "Повільно вдихніть на 4 секунди.\n"
-    "Видихніть на 6 секунд.\n"
-    "Повторіть 5 разів.\n\n"
-    "Після цього зробіть одну просту дію: випийте води, відкрийте вікно або відійдіть від екрана."
 )
 
 
@@ -44,30 +36,30 @@ def get_recommendation(risk_level: str, branch: str) -> str:
         return CRISIS_TEXT
 
     if risk_level == "MEDIUM":
-        strategy = random.choice(MEDIUM_SUPPORT)
-        return strategy["text"]
+        return get_medium_support()
 
-    strategy = random.choice(LOW_SUPPORT)
-    return strategy["text"]
+    if branch:
+        return get_additional_support(branch)
+
+    return get_low_support()
 
 
 def build_summary(data: dict) -> str:
     branch = data.get("branch", "UNCLEAR")
     risk_level = data.get("risk_level", "LOW")
 
-    recommendation = get_recommendation(risk_level, branch)
-
     branch_names = {
-        "PANIC": "тривога та емоційне перенавантаження",
+        "PANIC": "тривога або панічний стан",
         "DEPRESSION": "емоційне виснаження",
-        "STRESS": "стрес та перевантаження",
+        "STRESS": "стрес і перевантаження",
         "RELATIONSHIP": "ситуація у відносинах",
-        "LONELINESS": "самотність та нестача підтримки",
-        "STUDY_WORK": "навчання або робоче навантаження",
+        "LONELINESS": "самотність або нестача підтримки",
+        "STUDY_WORK": "навчальне чи робоче навантаження",
         "UNCLEAR": "емоційне напруження"
     }
 
     readable_branch = branch_names.get(branch, "емоційне напруження")
+    recommendation = get_recommendation(risk_level, branch)
 
     return (
         "Дякую, що пройшли діалог.\n\n"
@@ -76,3 +68,7 @@ def build_summary(data: dict) -> str:
         "Якщо стан посилюється, триває довго або заважає нормально жити — "
         "варто звернутися до психолога або лікаря."
     )
+
+
+def get_followup_support(branch: str) -> str:
+    return get_additional_support(branch)
