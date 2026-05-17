@@ -1,6 +1,5 @@
 from aiogram.fsm.state import State, StatesGroup
 
-
 class SupportDialog(StatesGroup):
     consent = State()
 
@@ -11,20 +10,15 @@ class SupportDialog(StatesGroup):
     scale_check = State()
     support_check = State()
     coping_check = State()
+
+    tension_journal = State()
+    action_choice = State()
+
     safety_check = State()
-
-    panic_branch = State()
-    depression_branch = State()
-    stress_branch = State()
-    relationship_branch = State()
-    loneliness_branch = State()
-    study_work_branch = State()
-    unclear_branch = State()
-
-    technique = State()
     feedback = State()
-    additional_support = State()
-    summary = State()
+    stabilization_followup = State()
+    second_feedback = State()
+    ready_to_finish = State()
 
     crisis_mode = State()
     finished = State()
