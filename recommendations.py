@@ -46,7 +46,6 @@ def get_recommendation(risk_level: str, branch: str) -> str:
 
 def build_summary(data: dict) -> str:
     branch = data.get("branch", "UNCLEAR")
-    risk_level = data.get("risk_level", "LOW")
 
     branch_names = {
         "PANIC": "тривога або панічний стан",
@@ -59,12 +58,15 @@ def build_summary(data: dict) -> str:
     }
 
     readable_branch = branch_names.get(branch, "емоційне напруження")
-    recommendation = get_recommendation(risk_level, branch)
 
     return (
         "Дякую, що пройшли діалог.\n\n"
         f"Схоже, зараз основна складність пов’язана з: {readable_branch}.\n\n"
-        f"{recommendation}\n\n"
+        "На найближчий час краще обрати не багато дій, а одну просту й реальну:\n"
+        "- зробити коротку паузу\n"
+        "- зменшити навантаження\n"
+        "- повернутися до того, що ви можете контролювати\n"
+        "- звернутися до людини, якій довіряєте\n\n"
         "Якщо стан посилюється, триває довго або заважає нормально жити — "
         "варто звернутися до психолога або лікаря."
     )
