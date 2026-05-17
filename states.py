@@ -1,5 +1,6 @@
 from aiogram.fsm.state import State, StatesGroup
 
+
 class SupportDialog(StatesGroup):
     consent = State()
 
@@ -18,6 +19,7 @@ class SupportDialog(StatesGroup):
     feedback = State()
     stabilization_followup = State()
     second_feedback = State()
+    additional_support = State()
     ready_to_finish = State()
 
     crisis_mode = State()
