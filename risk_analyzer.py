@@ -130,3 +130,23 @@ def analyze_final_risk(session_data: dict) -> str:
         return "MEDIUM"
 
     return "LOW"
+
+def classify_coping_answer(text: str) -> str:
+    text = text.lower()
+
+    if any(word in text for word in ["нічого", "ничего", "не пробував", "не пробовал"]):
+        return "NOTHING"
+
+    if any(word in text for word in ["не допомогло", "не помогло", "гірше", "хуже"]):
+        return "DID_NOT_HELP"
+
+    if any(word in text for word in ["дихання", "дышал", "прогулян", "сон", "музик", "говорив", "говорил"]):
+        return "HEALTHY_ATTEMPT"
+
+    if any(word in text for word in ["алкоголь", "таблет", "поріз", "резал", "самоповреж", "самоушкод"]):
+        return "RISKY_ATTEMPT"
+
+    if any(word in text for word in ["не знаю", "не знаю що", "не уверен", "не впевнений"]):
+        return "UNKNOWN"
+
+    return "GENERAL"
