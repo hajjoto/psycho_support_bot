@@ -32,3 +32,20 @@ restart_keyboard = ReplyKeyboardMarkup(
     ],
     resize_keyboard=True
 )
+
+feedback_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="Стало легше"), KeyboardButton(text="Не стало легше")],
+        [KeyboardButton(text="Завершити діалог")]
+    ],
+    resize_keyboard=True
+)
+
+
+finish_or_advice_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="Завершити діалог")],
+        [KeyboardButton(text="Ще одна порада")]
+    ],
+    resize_keyboard=True
+)
