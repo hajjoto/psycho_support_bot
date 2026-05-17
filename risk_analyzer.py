@@ -1,61 +1,123 @@
 HIGH_RISK_WORDS = [
-    "хочу умереть",
-    "хочу померти",
-    "не хочу жить",
-    "не хочу жити",
-    "суицид",
-    "самогубство",
-    "убить себя",
-    "вбити себе",
-    "покончить с собой",
-    "накласти на себе руки",
-    "самоповреждение",
-    "самоушкодження"
+    "хочу умереть", "хочу померти",
+    "не хочу жить", "не хочу жити",
+    "суицид", "самогубство",
+    "убить себя", "вбити себе",
+    "покончить с собой", "накласти на себе руки",
+    "самоповреждение", "самоушкодження",
+    "есть план", "є план",
+    "прощаюсь", "прощавай"
+]
+
+PANIC_WORDS = [
+    "паника", "паніка",
+    "паническая атака", "панічна атака",
+    "не могу дышать", "не можу дихати",
+    "сердце бьется", "серце бʼється",
+    "страшно", "накрывает", "накриває"
+]
+
+DEPRESSION_WORDS = [
+    "нет сил", "немає сил",
+    "ничего не хочу", "нічого не хочу",
+    "апатия", "апатія",
+    "пустота", "порожнеча",
+    "не вижу смысла", "не бачу сенсу",
+    "лежу весь день"
+]
+
+STRESS_WORDS = [
+    "стресс", "стрес",
+    "перегруз", "перевантаження",
+    "дедлайн", "не успеваю", "не встигаю",
+    "все навалилось", "все навалилося"
+]
+
+RELATIONSHIP_WORDS = [
+    "отношения", "відносини",
+    "девушка", "дівчина",
+    "парень", "хлопець",
+    "ссора", "сварка",
+    "расставание", "розставання",
+    "игнор", "конфликт", "конфлікт"
+]
+
+LONELINESS_WORDS = [
+    "одиноко", "самотньо",
+    "одиночество", "самотність",
+    "никому не нужен", "нікому не потрібен",
+    "нет друзей", "немає друзів",
+    "не с кем поговорить", "немає з ким поговорити"
+]
+
+STUDY_WORK_WORDS = [
+    "учеба", "навчання",
+    "работа", "робота",
+    "диплом", "экзамен", "іспит",
+    "прокрастинация", "прокрастинація",
+    "задача", "проект", "проєкт"
 ]
 
 
-MEDIUM_RISK_WORDS = [
-    "паника",
-    "паніка",
-    "паническая атака",
-    "панічна атака",
-    "сильная тревога",
-    "сильна тривога",
-    "бессонница",
-    "безсоння",
-    "не справляюсь",
-    "не справляюся",
-    "очень плохо",
-    "дуже погано"
-]
+def contains_any(text: str, words: list[str]) -> bool:
+    text = text.lower()
+    return any(word in text for word in words)
 
 
-LOW_RISK_WORDS = [
-    "стресс",
-    "стрес",
-    "усталость",
-    "втома",
-    "одиночество",
-    "самотність",
-    "отношения",
-    "відносини",
-    "тревога",
-    "тривога",
-    "грусть",
-    "сум"
-]
+def is_crisis(text: str) -> bool:
+    return contains_any(text, HIGH_RISK_WORDS)
 
 
-def analyze_risk(text: str) -> str:
+def classify_branch(text: str) -> str:
     text = text.lower()
 
-    if any(word in text for word in HIGH_RISK_WORDS):
+    if contains_any(text, PANIC_WORDS):
+        return "PANIC"
+
+    if contains_any(text, DEPRESSION_WORDS):
+        return "DEPRESSION"
+
+    if contains_any(text, STRESS_WORDS):
+        return "STRESS"
+
+    if contains_any(text, RELATIONSHIP_WORDS):
+        return "RELATIONSHIP"
+
+    if contains_any(text, LONELINESS_WORDS):
+        return "LONELINESS"
+
+    if contains_any(text, STUDY_WORK_WORDS):
+        return "STUDY_WORK"
+
+    return "UNCLEAR"
+
+
+def analyze_final_risk(session_data: dict) -> str:
+    combined_text = " ".join(
+        str(value).lower()
+        for value in session_data.values()
+        if value
+    )
+
+    if is_crisis(combined_text):
         return "HIGH"
 
-    if any(word in text for word in MEDIUM_RISK_WORDS):
-        return "MEDIUM"
+    scale = session_data.get("scale_score")
 
-    if any(word in text for word in LOW_RISK_WORDS):
-        return "LOW"
+    try:
+        scale = int(scale)
+    except (TypeError, ValueError):
+        scale = 0
+
+    medium_markers = [
+        "паника", "паніка",
+        "не справляюсь", "не справляюся",
+        "бессонница", "безсоння",
+        "дуже погано", "очень плохо",
+        "нет поддержки", "немає підтримки"
+    ]
+
+    if scale >= 7 or contains_any(combined_text, medium_markers):
+        return "MEDIUM"
 
     return "LOW"
