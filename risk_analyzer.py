@@ -1,5 +1,3 @@
-from risk_analyzer import is_crisis, classify_branch, analyze_final_risk, classify_coping_answer
-
 HIGH_RISK_WORDS = [
     "хочу умереть", "хочу померти",
     "не хочу жить", "не хочу жити",
