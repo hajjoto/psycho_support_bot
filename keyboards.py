@@ -9,8 +9,17 @@ start_keyboard = ReplyKeyboardMarkup(
 )
 
 
-problem_keyboard = ReplyKeyboardMarkup(
+dialog_keyboard = ReplyKeyboardMarkup(
     keyboard=[
+        [KeyboardButton(text="Завершити діалог")]
+    ],
+    resize_keyboard=True
+)
+
+
+feedback_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="Стало легше"), KeyboardButton(text="Не стало легше")],
         [KeyboardButton(text="Завершити діалог")]
     ],
     resize_keyboard=True
