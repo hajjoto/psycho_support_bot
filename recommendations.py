@@ -1,5 +1,7 @@
 import random
+
 from support_strategies import LOW_SUPPORT, MEDIUM_SUPPORT
+
 
 CRISIS_TEXT = (
     "Мені дуже шкода, що вам зараз настільки важко.\n\n"
@@ -11,6 +13,30 @@ CRISIS_TEXT = (
     "Lifeline Ukraine: 7333\n\n"
     "Якщо є негайна небезпека — телефонуйте 112 прямо зараз."
 )
+
+
+ADDITIONAL_SUPPORT_TEXT = (
+    "Спробуйте ще одну коротку техніку.\n\n"
+    "Поставте ноги на підлогу.\n"
+    "Повільно вдихніть на 4 секунди.\n"
+    "Видихніть на 6 секунд.\n"
+    "Повторіть 5 разів.\n\n"
+    "Після цього зробіть одну просту дію: випийте води, відкрийте вікно або відійдіть від екрана."
+)
+
+
+def get_branch_intro(branch: str) -> str:
+    texts = {
+        "PANIC": "Схоже, зараз у вас сильна тривога або панічний стан.",
+        "DEPRESSION": "Схоже, вам емоційно важко і бракує сил.",
+        "STRESS": "Схоже, ви перевантажені.",
+        "RELATIONSHIP": "Схоже, ситуація повʼязана з відносинами або конфліктом.",
+        "LONELINESS": "Схоже, вам зараз самотньо або бракує підтримки.",
+        "STUDY_WORK": "Схоже, вас тисне навчання, робота або дедлайн.",
+        "UNCLEAR": "Я поки не до кінця зрозумів ситуацію, тому поставлю кілька уточнень."
+    }
+
+    return texts.get(branch, texts["UNCLEAR"])
 
 
 def get_recommendation(risk_level: str, branch: str) -> str:
@@ -41,10 +67,7 @@ def build_summary(data: dict) -> str:
         "UNCLEAR": "емоційне напруження"
     }
 
-    readable_branch = branch_names.get(
-        branch,
-        "емоційне напруження"
-    )
+    readable_branch = branch_names.get(branch, "емоційне напруження")
 
     return (
         "Дякую, що пройшли діалог.\n\n"
