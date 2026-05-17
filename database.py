@@ -29,10 +29,15 @@ async def init_db():
             session_id TEXT NOT NULL,
             role TEXT NOT NULL,
             text TEXT NOT NULL,
-            stage TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP      
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
-        """)                   
+        """)
+
+        await conn.execute("""
+        ALTER TABLE messages
+        ADD COLUMN IF NOT EXISTS stage TEXT;
+        """)
+
 
 async def create_session(session_id: str):
     async with pool.acquire() as conn:
@@ -43,7 +48,12 @@ async def create_session(session_id: str):
         """, session_id, "started")
 
 
-async def save_message(session_id: str, role: str, text: str, stage: str = "unknown"):
+async def save_message(
+    session_id: str,
+    role: str,
+    text: str,
+    stage: str = "unknown"
+):
     async with pool.acquire() as conn:
         await conn.execute("""
         INSERT INTO messages (session_id, role, text, stage)
@@ -51,7 +61,11 @@ async def save_message(session_id: str, role: str, text: str, stage: str = "unkn
         """, session_id, role, text, stage)
 
 
-async def update_session_risk(session_id: str, risk_level: str, status: str):
+async def update_session_risk(
+    session_id: str,
+    risk_level: str,
+    status: str
+):
     async with pool.acquire() as conn:
         await conn.execute("""
         UPDATE sessions
