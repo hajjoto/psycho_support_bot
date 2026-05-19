@@ -92,7 +92,6 @@ async def start(message: Message, state: FSMContext):
         "Бот не просить ваше імʼя, телефон, адресу або інші персональні дані.\n"
         "Ваші повідомлення використовуються для поточного діалогу та анонімної сесії.\n\n"
         "Бот не замінює психолога або лікаря. \n\n"
-        "Але вам нічого не допоможе якщо батьки вас назвали Світлана.\n"
         "У кризових ситуаціях потрібно звертатися до екстрених служб.\n\n"
         "Щоб почати, натисніть «Почати».",
         reply_markup=start_keyboard
@@ -340,10 +339,12 @@ async def tension_journal(message: Message, state: FSMContext):
     await state.set_state(SupportDialog.action_choice)
 
     await message.answer(
-        "Дякую. Тепер оберіть з того, що ви написали, одну дію, яку реально зробити за 5–10 хвилин.\n\n"
-        "Напишіть цю одну дію.",
-        reply_markup=dialog_keyboard
+    "Дякую. Уже добре, що ви це сформулювали.\n\n"
+    "Коли думки стають трохи структурованішими, нервовій системі часто легше.\n\n"
+    "Зараз я дам кілька рекомендацій, які можуть трохи знизити напругу.",
+    reply_markup=dialog_keyboard
     )
+
 
 @dp.message(SupportDialog.action_choice)
 async def action_choice(message: Message, state: FSMContext):
