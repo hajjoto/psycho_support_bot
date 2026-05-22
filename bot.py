@@ -26,6 +26,8 @@ from recommendations import (
 )
 from session_service import create_session_id
 from keyboards import (
+    start_time_keyboard,
+    urgent_protocol_keyboard,   
     start_keyboard,
     dialog_keyboard,
     restart_keyboard,
@@ -108,23 +110,40 @@ async def start(message: Message, state: FSMContext):
     )
 
 
-@dp.message(SupportDialog.consent, F.text == "Почати")
-async def process_consent(message: Message, state: FSMContext):
-    session_id = create_session_id()
+@dp.message(SupportDialog.start_time_choice, F.text == "Так")
+async def start_time_yes(message: Message, state: FSMContext):
+    data = await state.get_data()
+    session_id = data.get("session_id")
 
-    await create_session(session_id)
+    if session_id:
+        await save_message(session_id, "user", message.text, "start_time_choice")
 
-    await state.update_data(session_id=session_id)
-    await state.set_state(SupportDialog.open_problem)
-
-    logging.info(f"New anonymous session created: {session_id}")
+    await state.set_state(SupportDialog.scale_check)
 
     await message.answer(
-        "Опишіть у кількох реченнях, що вас зараз турбує.\n\n"
-        "Не вказуйте імʼя, телефон, адресу або інші персональні дані.",
-        reply_markup=dialog_keyboard
+        "Оцініть свій рівень напруги від 1 до 10.\n\n"
+        "1–5 — неприємно, але я можу справлятися.\n\n"
+        "6–8 — сильно переживаю, складно займатися справами.\n\n"
+        "9–10 — майже не контролюю емоції, дуже важко.",
+        reply_markup=scale_keyboard
     )
 
+
+@dp.message(SupportDialog.start_time_choice, F.text == "Ні, потрібно швидше")
+async def start_time_no(message: Message, state: FSMContext):
+    data = await state.get_data()
+    session_id = data.get("session_id")
+
+    if session_id:
+        await save_message(session_id, "user", message.text, "start_time_choice")
+
+    await message.answer(
+        "Можемо запропонувати протокол термінової самодопомоги: він займає приблизно 1 хвилину.\n\n"
+        "Якщо у вас є трохи більше часу — оберіть повний варіант. Він займає близько 3 хвилин і працює глибше.",
+        reply_markup=urgent_protocol_keyboard
+    )
+
+    await state.set_state(SupportDialog.protocol_choice)
 
 @dp.message(SupportDialog.consent)
 async def wrong_consent_message(message: Message):
@@ -315,13 +334,14 @@ async def coping_check(message: Message, state: FSMContext):
     )
 
 
-@dp.message(SupportDialog.protocol_choice, F.text.in_(["Короткий варіант", "Повний варіант"]))
+@dp.message(SupportDialog.protocol_choice, F.text.in_(["Терміновий протокол", "Повний варіант", "Короткий варіант"]))
 async def protocol_choice(message: Message, state: FSMContext):
     data = await state.get_data()
     session_id = data.get("session_id")
     branch = data.get("branch", "UNCLEAR")
 
-    mode = "SHORT" if message.text == "Короткий варіант" else "FULL"
+    mode = "FULL" if message.text == "Повний варіант" else "SHORT"
+
     protocols = get_protocols(branch, mode)
     selected_protocol = random.choice(protocols)
 
