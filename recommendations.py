@@ -69,5 +69,5 @@ def build_summary(data: dict) -> str:
     )
 
 
-def get_followup_support(branch: str) -> str:
-    return get_additional_support(branch)
+def get_followup_support(branch: str, used_types: list[str] | None = None) -> tuple[str, str]:
+    return get_additional_support(branch, used_types)
