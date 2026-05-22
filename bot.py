@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import random
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message
@@ -10,7 +11,12 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from config import BOT_TOKEN
 from states import SupportDialog
 from logger_config import setup_logger
-from risk_analyzer import is_crisis, classify_branch, analyze_final_risk, classify_coping_answer
+from risk_analyzer import (
+    is_crisis,
+    classify_branch,
+    analyze_final_risk,
+    classify_coping_answer
+)
 from recommendations import (
     CRISIS_TEXT,
     get_branch_intro,
@@ -19,7 +25,6 @@ from recommendations import (
     build_summary
 )
 from session_service import create_session_id
-from keyboards import start_keyboard, dialog_keyboard, feedback_keyboard, restart_keyboard
 from keyboards import (
     start_keyboard,
     dialog_keyboard,
@@ -28,6 +33,7 @@ from keyboards import (
     finish_or_advice_keyboard
 )
 from database import init_db, create_session, save_message, update_session_risk
+from therapy_flows import THERAPY_FLOWS
 
 
 bot = Bot(token=BOT_TOKEN)
@@ -90,9 +96,9 @@ async def start(message: Message, state: FSMContext):
     await message.answer(
         "Вітаю. Це бот анонімної психологічної підтримки.\n\n"
         "Бот не просить ваше імʼя, телефон, адресу або інші персональні дані.\n"
-        "Ваші повідомлення використовуються для поточного діалогу та анонімної сесії.\n"
-        "Бот не замінює психолога або лікаря. \n"
-        "У кризових ситуаціях потрібно звертатися до екстрених служб.\n"
+        "Ваші повідомлення використовуються для поточного діалогу та анонімної сесії.\n\n"
+        "Бот не замінює психолога або лікаря.\n"
+        "У кризових ситуаціях потрібно звертатися до екстрених служб.\n\n"
         "Щоб почати, натисніть «Почати».",
         reply_markup=start_keyboard
     )
@@ -218,7 +224,7 @@ async def impact_check(message: Message, state: FSMContext):
     await state.set_state(SupportDialog.scale_check)
 
     await message.answer(
-        "Оцініть свій стан зараз від 1 до 10, де 10 - максимально важко.",
+        "Оцініть свій стан зараз від 1 до 10, де 10 — максимально важко.",
         reply_markup=dialog_keyboard
     )
 
@@ -260,7 +266,7 @@ async def support_check(message: Message, state: FSMContext):
     await state.set_state(SupportDialog.coping_check)
 
     await message.answer(
-        "Ви щось роболи для того щоб покращити свій стан?",
+        "Ви вже пробували щось зробити, щоб трохи покращити свій стан?",
         reply_markup=dialog_keyboard
     )
 
@@ -272,6 +278,7 @@ async def coping_check(message: Message, state: FSMContext):
 
     data = await state.get_data()
     session_id = data.get("session_id")
+    branch = data.get("branch", "UNCLEAR")
 
     coping_type = classify_coping_answer(message.text)
 
@@ -287,83 +294,88 @@ async def coping_check(message: Message, state: FSMContext):
         await state.set_state(SupportDialog.safety_check)
 
         await message.answer(
-            "Те, що ви описали, може бути небезпечним способом впоратися зі станом.\n\n"
+            "Те, що ви описали, може бути небезпечним способом справлятися зі станом.\n\n"
             "Перед тим як продовжити: чи є зараз думки нашкодити собі?",
             reply_markup=dialog_keyboard
         )
         return
 
-    if coping_type == "NOTHING":
-        intro = (
-            "Добре. Якщо ви ще нічого не пробували, почнемо з дуже простого кроку.\n\n"
-        )
-    elif coping_type == "DID_NOT_HELP":
-        intro = (
-            "Зрозуміло. Якщо попередні спроби не допомогли, спробуємо інший підхід.\n\n"
-        )
-    elif coping_type == "HEALTHY_ATTEMPT":
-        intro = (
-            "Добре, ви вже пробували щось здорове для стабілізації. "
-            "Тоді спробуємо структурувати думки.\n\n"
-        )
-    else:
-        intro = (
-            "Добре. Спробуємо трохи впорядкувати те, що зараз відбувається.\n\n"
+    available_flows = THERAPY_FLOWS.get(
+        branch,
+        THERAPY_FLOWS["UNCLEAR"]
+    )
+
+    selected_flow = random.choice(available_flows)
+
+    await state.update_data(
+        current_flow=selected_flow,
+        current_step=0
+    )
+
+    if session_id:
+        await save_message(
+            session_id,
+            "bot",
+            selected_flow["steps"][0],
+            "therapy_flow_step_0"
         )
 
-    await state.set_state(SupportDialog.tension_journal)
+    await state.set_state(SupportDialog.therapy_flow)
 
     await message.answer(
-        intro +
-        "Спробуйте записати напругу в 3 рядки прямо тут:\n\n"
-        "1. Мене зараз турбує...\n"
-        "2. Я думаю про це...\n"
-        "3. Я можу зараз зробити...\n\n"
-        "Не треба писати ідеально. Просто коротко.",
+        selected_flow["steps"][0] + "\n\nНапишіть «Далі», коли будете готові продовжити.",
         reply_markup=dialog_keyboard
     )
 
-@dp.message(SupportDialog.tension_journal)
-async def tension_journal(message: Message, state: FSMContext):
+
+@dp.message(SupportDialog.therapy_flow)
+async def therapy_flow_step(message: Message, state: FSMContext):
     if await crisis_intercept(message, state):
         return
 
     data = await state.get_data()
     session_id = data.get("session_id")
+    current_flow = data.get("current_flow")
+    current_step = data.get("current_step", 0)
 
-    await state.update_data(tension_journal=message.text)
+    if not current_flow:
+        await state.set_state(SupportDialog.safety_check)
 
-    if session_id:
-        await save_message(session_id, "user", message.text, "tension_journal")
-
-    await state.set_state(SupportDialog.action_choice)
-
-    await message.answer(
-    "Дякую. Уже добре, що ви це сформулювали.\n\n"
-    "Коли думки стають трохи структурованішими, нервовій системі часто легше.\n\n"
-    "Зараз я дам кілька рекомендацій, які можуть трохи знизити напругу.",
-    reply_markup=dialog_keyboard
-    )
-
-
-@dp.message(SupportDialog.action_choice)
-async def action_choice(message: Message, state: FSMContext):
-    if await crisis_intercept(message, state):
+        await message.answer(
+            "Перед тим як я дам рекомендацію: чи є зараз думки нашкодити собі?",
+            reply_markup=dialog_keyboard
+        )
         return
 
-    data = await state.get_data()
-    session_id = data.get("session_id")
-
-    await state.update_data(action_choice=message.text)
+    next_step = current_step + 1
 
     if session_id:
-        await save_message(session_id, "user", message.text, "action_choice")
+        await save_message(session_id, "user", message.text, "therapy_flow_confirmation")
 
-    await state.set_state(SupportDialog.safety_check)
+    if next_step >= len(current_flow["steps"]):
+        await state.set_state(SupportDialog.safety_check)
+
+        await message.answer(
+            "Добре. Тепер коротко перевіримо безпеку.\n\n"
+            "Чи є зараз думки нашкодити собі?",
+            reply_markup=dialog_keyboard
+        )
+        return
+
+    await state.update_data(current_step=next_step)
+
+    step_text = current_flow["steps"][next_step]
+
+    if session_id:
+        await save_message(
+            session_id,
+            "bot",
+            step_text,
+            f"therapy_flow_step_{next_step}"
+        )
 
     await message.answer(
-        "Добре. Це вже конкретний крок, а не вся проблема одразу.\n\n"
-        "Перед тим як я дам рекомендацію: чи є зараз думки нашкодити собі?",
+        step_text + "\n\nНапишіть «Далі», коли будете готові продовжити.",
         reply_markup=dialog_keyboard
     )
 
@@ -380,7 +392,15 @@ async def safety_check(message: Message, state: FSMContext):
     if session_id:
         await save_message(session_id, "user", safety_answer, "safety_check")
 
-    if is_crisis(safety_answer) or safety_answer.lower() in ["так", "да", "є", "есть", "іноді", "иногда", "не знаю"]:
+    if is_crisis(safety_answer) or safety_answer.lower() in [
+        "так",
+        "да",
+        "є",
+        "есть",
+        "іноді",
+        "иногда",
+        "не знаю"
+    ]:
         await state.update_data(risk_level="HIGH")
 
         if session_id:
@@ -430,9 +450,9 @@ async def feedback_better(message: Message, state: FSMContext):
         "Добре. Тоді зараз важливо не перевантажувати себе одразу.\n\n"
         "На найближчі 30 хвилин:\n"
         "1. Не повертайтесь різко до важкої теми.\n"
-        "2. Зробіть одну просту дію, яку ви обрали.\n"
+        "2. Зробіть одну просту дію.\n"
         "3. Залишайтесь у спокійнішому середовищі.\n"
-        "4. Якщо можете - напишіть людині, якій довіряєте.\n\n"
+        "4. Якщо можете — напишіть людині, якій довіряєте.\n\n"
         "Можете завершити діалог або отримати ще одну коротку пораду."
     )
 
@@ -445,9 +465,32 @@ async def feedback_better(message: Message, state: FSMContext):
         reply_markup=finish_or_advice_keyboard
     )
 
+
+@dp.message(SupportDialog.feedback, F.text == "Не стало легше")
+async def feedback_not_better(message: Message, state: FSMContext):
+    data = await state.get_data()
+    session_id = data.get("session_id")
+
+    followup_text = get_followup_support(data.get("branch", "UNCLEAR"))
+
+    if session_id:
+        await save_message(session_id, "user", message.text, "feedback")
+        await save_message(session_id, "bot", followup_text, "stabilization_followup")
+
+    await state.set_state(SupportDialog.stabilization_followup)
+
+    await message.answer(
+        "Добре, тоді спробуємо інший підхід.\n\n"
+        f"{followup_text}\n\n"
+        "Після цього натисніть: «Стало легше» або «Не стало легше».",
+        reply_markup=feedback_keyboard
+    )
+
+
 @dp.message(SupportDialog.stabilization_followup, F.text == "Стало легше")
 async def second_feedback_better(message: Message, state: FSMContext):
     await feedback_better(message, state)
+
 
 @dp.message(SupportDialog.stabilization_followup, F.text == "Не стало легше")
 async def second_feedback_not_better(message: Message, state: FSMContext):
@@ -459,7 +502,7 @@ async def second_feedback_not_better(message: Message, state: FSMContext):
         "Зараз варто:\n"
         "1. Написати або подзвонити людині, якій довіряєте.\n"
         "2. Зменшити навантаження й не приймати різких рішень.\n"
-        "3. Якщо стан посилюється - звернутися до психолога або лікаря.\n\n"
+        "3. Якщо стан посилюється — звернутися до психолога або лікаря.\n\n"
         "Я підсумую діалог нижче."
     )
 
@@ -477,6 +520,7 @@ async def second_feedback_not_better(message: Message, state: FSMContext):
         text + "\n\n" + summary
     )
 
+
 @dp.message(SupportDialog.ready_to_finish, F.text == "Ще одна порада")
 async def extra_advice(message: Message, state: FSMContext):
     data = await state.get_data()
@@ -493,6 +537,7 @@ async def extra_advice(message: Message, state: FSMContext):
         reply_markup=finish_or_advice_keyboard
     )
 
+
 @dp.message(SupportDialog.ready_to_finish, F.text == "Завершити діалог")
 async def finish_after_better(message: Message, state: FSMContext):
     data = await state.get_data()
@@ -506,45 +551,6 @@ async def finish_after_better(message: Message, state: FSMContext):
         await update_session_risk(session_id, data.get("risk_level", "LOW"), "finished")
 
     await finish_dialog(message, state, summary)
-
-@dp.message(SupportDialog.feedback, F.text == "Не стало легше")
-async def feedback_not_better(message: Message, state: FSMContext):
-    data = await state.get_data()
-    session_id = data.get("session_id")
-
-    followup_text = get_followup_support(data.get("branch", "UNCLEAR"))
-
-    if session_id:
-        await save_message(session_id, "user", message.text, "feedback")
-        await save_message(session_id, "bot", followup_text, "additional_support")
-
-    await state.set_state(SupportDialog.additional_support)
-
-    await message.answer(
-        followup_text + "\n\nПісля цього напишіть будь-яке повідомлення, і я підсумую діалог.",
-        reply_markup=dialog_keyboard
-    )
-
-@dp.message(SupportDialog.additional_support)
-async def additional_support(message: Message, state: FSMContext):
-    if await crisis_intercept(message, state):
-        return
-
-    data = await state.get_data()
-    session_id = data.get("session_id")
-
-    summary = build_summary(data)
-
-    if session_id:
-        await save_message(session_id, "user", message.text, "additional_support_feedback")
-        await save_message(session_id, "bot", summary, "summary")
-        await update_session_risk(session_id, data.get("risk_level", "MEDIUM"), "finished")
-
-    await finish_dialog(
-        message,
-        state,
-        summary
-    )
 
 
 @dp.message(SupportDialog.finished, F.text == "Почати нову сесію")
