@@ -77,6 +77,34 @@ yes_no_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
+protocol_choice_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="Короткий варіант")],
+        [KeyboardButton(text="Повний варіант")],
+        [KeyboardButton(text="Завершити діалог")]
+    ],
+    resize_keyboard=True
+)
+
+
+protocol_next_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="Далі")],
+        [KeyboardButton(text="Завершити діалог")]
+    ],
+    resize_keyboard=True
+)
+
+
+protocol_feedback_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="Стало легше"), KeyboardButton(text="Не стало легше")],
+        [KeyboardButton(text="Повторити вправу")],
+        [KeyboardButton(text="Завершити діалог")]
+    ],
+    resize_keyboard=True
+)
+
 
 done_next_keyboard = ReplyKeyboardMarkup(
     keyboard=[
