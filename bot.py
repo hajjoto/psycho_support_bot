@@ -546,7 +546,18 @@ async def extra_advice(message: Message, state: FSMContext):
     data = await state.get_data()
     session_id = data.get("session_id")
 
-    advice = get_followup_support(data.get("branch", "UNCLEAR"))
+    used_types = data.get("used_support_types", [])
+
+    advice, advice_type = get_followup_support(
+        data.get("branch", "UNCLEAR"),
+        used_types
+    )
+
+    used_types.append(advice_type)
+
+    await state.update_data(
+        used_support_types=used_types
+    )
 
     if session_id:
         await save_message(session_id, "user", message.text, "ready_to_finish")
@@ -556,7 +567,6 @@ async def extra_advice(message: Message, state: FSMContext):
         advice,
         reply_markup=finish_or_advice_keyboard
     )
-
 
 @dp.message(SupportDialog.ready_to_finish, F.text == "Завершити діалог")
 async def finish_after_better(message: Message, state: FSMContext):
