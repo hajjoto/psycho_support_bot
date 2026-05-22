@@ -31,3 +31,5 @@ class SupportDialog(StatesGroup):
     protocol_choice = State()
     protocol_running = State()
     protocol_feedback = State()
+
+    start_time_choice = State()
