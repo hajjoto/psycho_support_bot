@@ -41,6 +41,33 @@ feedback_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
+next_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="Далі")],
+        [KeyboardButton(text="Завершити діалог")]
+    ],
+    resize_keyboard=True
+)
+
+
+scale_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="1-5")],
+        [KeyboardButton(text="6-8")],
+        [KeyboardButton(text="9-10")],
+        [KeyboardButton(text="Завершити діалог")]
+    ],
+    resize_keyboard=True
+)
+
+
+yes_no_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="Так"), KeyboardButton(text="Ні")],
+        [KeyboardButton(text="Завершити діалог")]
+    ],
+    resize_keyboard=True
+)
 
 finish_or_advice_keyboard = ReplyKeyboardMarkup(
     keyboard=[
