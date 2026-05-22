@@ -33,6 +33,8 @@ from keyboards import (
     finish_or_advice_keyboard,
     next_keyboard,
     scale_keyboard,
+    yes_no_keyboard,
+    done_next_keyboard,
     yes_no_keyboard
 )
 from database import init_db, create_session, save_message, update_session_risk
@@ -121,7 +123,7 @@ async def process_consent(message: Message, state: FSMContext):
     await message.answer(
         "Опишіть у кількох реченнях, що вас зараз турбує.\n\n"
         "Не вказуйте імʼя, телефон, адресу або інші персональні дані.",
-        reply_markup=dialog_keyboard
+        reply_markup=done_next_keyboard
     )
 
 
@@ -165,7 +167,7 @@ async def open_problem(message: Message, state: FSMContext):
     await message.answer(
         f"{get_branch_intro(branch)}\n\n"
         "Як давно ви це відчуваєте?",
-        reply_markup=dialog_keyboard
+        reply_markup=done_next_keyboard
     )
 
 
@@ -186,7 +188,7 @@ async def duration_check(message: Message, state: FSMContext):
 
     await message.answer(
         "Що, на вашу думку, найбільше вплинуло на цей стан?",
-        reply_markup=dialog_keyboard
+        reply_markup=done_next_keyboard
     )
 
 
@@ -251,8 +253,8 @@ async def scale_check(message: Message, state: FSMContext):
     await state.set_state(SupportDialog.support_check)
 
     await message.answer(
-        "Чи є зараз поруч людина, якій ви можете написати або подзвонити?",
-        reply_markup=dialog_keyboard
+    "Чи є зараз поруч людина, якій ви можете написати або подзвонити?",
+    reply_markup=yes_no_keyboard
     )
 
 
@@ -272,8 +274,8 @@ async def support_check(message: Message, state: FSMContext):
     await state.set_state(SupportDialog.coping_check)
 
     await message.answer(
-        "Ви вже пробували щось зробити, щоб трохи покращити свій стан?",
-        reply_markup=dialog_keyboard
+    "Ви вже пробували щось зробити, щоб трохи покращити свій стан?",
+    reply_markup=yes_no_keyboard
     )
 
 
@@ -302,7 +304,7 @@ async def coping_check(message: Message, state: FSMContext):
         await message.answer(
             "Те, що ви описали, може бути небезпечним способом справлятися зі станом.\n\n"
             "Перед тим як продовжити: чи є зараз думки нашкодити собі?",
-            reply_markup=dialog_keyboard
+            reply_markup=done_next_keyboard
         )
         return
 
@@ -330,7 +332,7 @@ async def coping_check(message: Message, state: FSMContext):
 
     await message.answer(
         selected_flow["steps"][0] + "\n\nНапишіть «Далі», коли будете готові продовжити.",
-        reply_markup=dialog_keyboard
+        reply_markup=done_next_keyboard
     )
 
 
@@ -349,7 +351,7 @@ async def therapy_flow_step(message: Message, state: FSMContext):
 
         await message.answer(
             "Перед тим як я дам рекомендацію: чи є зараз думки нашкодити собі?",
-            reply_markup=dialog_keyboard
+            reply_markup=done_next_keyboard
         )
         return
 
@@ -364,7 +366,7 @@ async def therapy_flow_step(message: Message, state: FSMContext):
         await message.answer(
             "Добре. Тепер коротко перевіримо безпеку.\n\n"
             "Чи є зараз думки нашкодити собі?",
-            reply_markup=dialog_keyboard
+            reply_markup=done_next_keyboard
         )
         return
 
@@ -382,7 +384,7 @@ async def therapy_flow_step(message: Message, state: FSMContext):
 
     await message.answer(
         step_text + "\n\nНапишіть «Далі», коли будете готові продовжити.",
-        reply_markup=dialog_keyboard
+        reply_markup=done_next_keyboard
     )
 
 
@@ -581,7 +583,7 @@ async def unknown_message(message: Message, state: FSMContext):
     else:
         await message.answer(
             "Продовжіть відповідати на поточне питання або натисніть «Завершити діалог».",
-            reply_markup=dialog_keyboard
+            reply_markup=done_next_keyboard
         )
 
 
