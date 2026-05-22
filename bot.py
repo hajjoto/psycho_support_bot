@@ -304,9 +304,8 @@ async def coping_check(message: Message, state: FSMContext):
         await message.answer(
             "Те, що ви описали, може бути небезпечним способом справлятися зі станом.\n\n"
             "Перед тим як продовжити: чи є зараз думки нашкодити собі?",
-            reply_markup=done_next_keyboard
+           reply_markup=yes_no_keyboard
         )
-        return
 
     available_flows = THERAPY_FLOWS.get(
         branch,
@@ -366,7 +365,7 @@ async def therapy_flow_step(message: Message, state: FSMContext):
         await message.answer(
             "Добре. Тепер коротко перевіримо безпеку.\n\n"
             "Чи є зараз думки нашкодити собі?",
-            reply_markup=done_next_keyboard
+            reply_markup=yes_no_keyboard
         )
         return
 
@@ -584,7 +583,7 @@ async def unknown_message(message: Message, state: FSMContext):
     else:
         await message.answer(
             "Продовжіть відповідати на поточне питання або натисніть «Завершити діалог».",
-            reply_markup=done_next_keyboard
+            reply_markup=yes_no_keyboard
         )
 
 
