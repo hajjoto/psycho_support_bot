@@ -30,7 +30,10 @@ from keyboards import (
     dialog_keyboard,
     feedback_keyboard,
     restart_keyboard,
-    finish_or_advice_keyboard
+    finish_or_advice_keyboard,
+    next_keyboard,
+    scale_keyboard,
+    yes_no_keyboard
 )
 from database import init_db, create_session, save_message, update_session_risk
 from therapy_flows import THERAPY_FLOWS
@@ -224,9 +227,12 @@ async def impact_check(message: Message, state: FSMContext):
     await state.set_state(SupportDialog.scale_check)
 
     await message.answer(
-        "Оцініть свій стан зараз від 1 до 10, де 10 — максимально важко.",
-        reply_markup=dialog_keyboard
-    )
+    "Оцініть свій рівень напруги від 1 до 10.\n\n"
+    "1–5 — неприємно, але я можу справлятися.\n\n"
+    "6–8 — сильно переживаю, складно займатися справами.\n\n"
+    "9–10 — майже не контролюю емоції, дуже важко.",
+    reply_markup=scale_keyboard
+)
 
 
 @dp.message(SupportDialog.scale_check)
