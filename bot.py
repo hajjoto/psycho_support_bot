@@ -146,12 +146,31 @@ async def start_time_no(message: Message, state: FSMContext):
     await state.set_state(SupportDialog.protocol_choice)
 
 @dp.message(SupportDialog.consent)
-async def wrong_consent_message(message: Message):
-    await message.answer(
-        "Щоб почати діалог, натисніть кнопку «Почати».",
-        reply_markup=start_keyboard
+async def process_consent(message: Message, state: FSMContext):
+    if message.text.strip() != "Почати":
+        await message.answer(
+            "Щоб почати діалог, натисніть кнопку «Почати».",
+            reply_markup=start_keyboard
+        )
+        return
+
+    session_id = create_session_id()
+
+    await create_session(session_id)
+
+    await state.update_data(
+        session_id=session_id,
+        branch="UNCLEAR"
     )
 
+    await state.set_state(SupportDialog.start_time_choice)
+
+    logging.info(f"New anonymous session created: {session_id}")
+
+    await message.answer(
+        "Чи можете ви приділити собі приблизно 3 хвилини?",
+        reply_markup=start_time_keyboard
+    )
 
 @dp.message(F.text == "Завершити діалог")
 async def manual_finish(message: Message, state: FSMContext):
