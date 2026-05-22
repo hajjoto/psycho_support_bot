@@ -1,5 +1,21 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
+start_time_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="Так")],
+        [KeyboardButton(text="Ні, потрібно швидше")]
+    ],
+    resize_keyboard=True
+)
+
+
+urgent_protocol_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="Терміновий протокол")],
+        [KeyboardButton(text="Повний варіант")]
+    ],
+    resize_keyboard=True
+)
 
 start_keyboard = ReplyKeyboardMarkup(
     keyboard=[
