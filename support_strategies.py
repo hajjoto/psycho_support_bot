@@ -489,8 +489,19 @@ def get_medium_support() -> str:
     return random.choice(MEDIUM_SUPPORT)["text"]
 
 
-def get_additional_support(branch: str) -> str:
-    strategies = BRANCH_SUPPORT.get(branch, LOW_SUPPORT)
-    strategy = random.choice(strategies)
+def get_additional_support(branch: str, used_types: list[str] | None = None) -> tuple[str, str]:
+    used_types = used_types or []
 
-    return strategy["text"]
+    strategies = BRANCH_SUPPORT.get(branch, LOW_SUPPORT)
+
+    available = [
+        strategy for strategy in strategies
+        if strategy["type"] not in used_types
+    ]
+
+    if not available:
+        available = strategies
+
+    strategy = random.choice(available)
+
+    return strategy["text"], strategy["type"]
