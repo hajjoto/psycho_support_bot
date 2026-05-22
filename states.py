@@ -24,3 +24,5 @@ class SupportDialog(StatesGroup):
 
     crisis_mode = State()
     finished = State()
+    therapy_flow = State()
+    therapy_step = State()
