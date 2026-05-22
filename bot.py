@@ -429,7 +429,12 @@ async def protocol_running(message: Message, state: FSMContext):
     step_text = protocol["steps"][next_step]
 
     if session_id:
-        await save_message(session_id, "bot", step_text, f"protocol_step_{next_step}")
+        await save_message(
+            session_id,
+            "bot",
+            step_text,
+            f"protocol_step_{next_step}"
+        )
 
     await message.answer(
         step_text,
