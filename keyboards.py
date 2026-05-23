@@ -11,7 +11,7 @@ start_keyboard = ReplyKeyboardMarkup(
 
 start_time_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="✅ Так, маю 3 хвилини")],
+        [KeyboardButton(text="✅ Так, маю пару хвилини")],
         [KeyboardButton(text="⚡ Ні, потрібно швидше")]
     ],
     resize_keyboard=True
@@ -138,6 +138,18 @@ keep_next_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="✅ Далі")],
         [KeyboardButton(text="🧭 Перейти до опитування")],
+        [KeyboardButton(text="⛔ Завершити діалог")]
+    ],
+    resize_keyboard=True
+)
+
+support_detail_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="🔎 Що зі мною відбувається")],
+        [KeyboardButton(text="🛠 Що може допомогти")],
+        [KeyboardButton(text="🚫 Чого краще не робити")],
+        [KeyboardButton(text="📋 План на 30 хвилин")],
+        [KeyboardButton(text="🧘 Перейти до вправ")],
         [KeyboardButton(text="⛔ Завершити діалог")]
     ],
     resize_keyboard=True
