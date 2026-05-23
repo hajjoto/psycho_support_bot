@@ -134,6 +134,15 @@ keep_finish_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
+keep_next_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="✅ Далі")],
+        [KeyboardButton(text="🧭 Перейти до опитування")],
+        [KeyboardButton(text="⛔ Завершити діалог")]
+    ],
+    resize_keyboard=True
+)
+
 finish_or_advice_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="💡 Ще одна порада")],
