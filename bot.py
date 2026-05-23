@@ -517,28 +517,6 @@ async def protocol_running_wrong_input(message: Message):
         reply_markup=protocol_next_keyboard
     )
 
-@dp.message(SupportDialog.protocol_feedback, F.text == "Стало легше")
-async def protocol_feedback_better(message: Message, state: FSMContext):
-    data = await state.get_data()
-    session_id = data.get("session_id")
-
-    risk_level = analyze_final_risk(data)
-    branch = data.get("branch", "UNCLEAR")
-    recommendation = get_recommendation(risk_level, branch)
-
-    await state.update_data(risk_level=risk_level)
-
-    if session_id:
-        await save_message(session_id, "user", message.text, "protocol_feedback")
-        await save_message(session_id, "bot", recommendation, "recommendation")
-        await update_session_risk(session_id, risk_level, "recommendation_given")
-
-    await state.set_state(SupportDialog.ready_to_finish)
-
-    await message.answer(
-        recommendation + "\n\nМожете завершити діалог або отримати ще одну коротку пораду.",
-        reply_markup=finish_or_advice_keyboard
-    )
 
 @dp.message(SupportDialog.protocol_feedback, F.text == "Повторити вправу")
 async def protocol_repeat(message: Message, state: FSMContext):
@@ -585,7 +563,7 @@ async def protocol_repeat(message: Message, state: FSMContext):
     )
 
 @dp.message(SupportDialog.protocol_feedback, F.text == "Стало легше")
-async def protocol_feedback_better_action(message: Message, state: FSMContext):
+async def protocol_feedback_better(message: Message, state: FSMContext):
     data = await state.get_data()
     session_id = data.get("session_id")
 
@@ -613,6 +591,13 @@ async def protocol_feedback_better_action(message: Message, state: FSMContext):
     await message.answer(
         answer_text,
         reply_markup=finish_or_advice_keyboard
+    )
+
+@dp.message(SupportDialog.protocol_feedback, F.text == "Не стало легше")
+async def protocol_feedback_not_better(message: Message, state: FSMContext):
+    await message.answer(
+        "Добре. Тоді спробуємо іншу вправу.",
+        reply_markup=protocol_feedback_keyboard
     )
 
 
