@@ -133,7 +133,7 @@ async def start(message: Message, state: FSMContext):
         "Я допоможу коротко оцінити ваш стан і запропоную вправу або поради, "
         "які можуть бути корисними саме зараз.\n\n"
         "Бот не замінює психолога або лікаря. "
-        "Якщо є загроза життю чи здоровʼю — зверніться до екстрених служб.\n\n"
+        "Якщо є загроза життю чи здоровʼю - зверніться до екстрених служб.\n\n"
         "Щоб почати, натисніть «Почати».",
         reply_markup=start_keyboard
     )
@@ -181,9 +181,9 @@ async def start_time_choice(message: Message, state: FSMContext):
 
         await message.answer(
             "Оцініть рівень напруги зараз.\n\n"
-            "1–5 — неприємно, але ви ще можете справлятися.\n\n"
-            "6–8 — напруга сильна, складно займатися справами.\n\n"
-            "9–10 — дуже важко, контроль майже втрачається.",
+            "1–5 - неприємно, але ви ще можете справлятися.\n\n"
+            "6–8 - напруга сильна, складно займатися справами.\n\n"
+            "9–10 - дуже важко, контроль майже втрачається.",
             reply_markup=scale_keyboard
         )
         return
@@ -191,7 +191,7 @@ async def start_time_choice(message: Message, state: FSMContext):
     if selected == BTN_NO_FAST or "швидше" in (message.text or ""):
         await message.answer(
             "Можемо почати з короткої самодопомоги. Вона займає близько 1 хвилини.\n\n"
-            "Якщо маєте трохи більше часу — оберіть повний варіант. "
+            "Якщо маєте трохи більше часу - оберіть повний варіант. "
             "Він займає близько 3 хвилин і працює глибше.",
             reply_markup=urgent_protocol_keyboard
         )
@@ -620,10 +620,10 @@ async def help_command(message: Message):
         "ℹ️ Допомога\n\n"
         "Бот допомагає коротко оцінити стан і підібрати вправи самодопомоги.\n\n"
         "Основні дії:\n"
-        "🔄 /start — почати спочатку\n"
-        "🗓 /reminder — нагадування\n"
-        "📌 /keep — корисна інформація під рукою\n"
-        "☎️ /contacts — екстрені контакти"
+        "🔄 /start - почати спочатку\n"
+        "🗓 /reminder - нагадування\n"
+        "📌 /keep - корисна інформація під рукою\n"
+        "☎️ /contacts - екстрені контакти"
     )
 
 
@@ -632,9 +632,9 @@ async def contacts_command(message: Message):
     await message.answer(
         "☎️ Екстрені контакти\n\n"
         "Україна:\n"
-        "112 — єдиний номер екстреної допомоги\n"
-        "103 — швидка медична допомога\n\n"
-        "Якщо є негайна небезпека для життя або здоровʼя — телефонуйте 112 або 103."
+        "112 - єдиний номер екстреної допомоги\n"
+        "103 - швидка медична допомога\n\n"
+        "Якщо є негайна небезпека для життя або здоровʼя - телефонуйте 112 або 103."
     )
 
 
@@ -647,7 +647,7 @@ async def keep_command(message: Message):
         "2. Зробіть повільний видих.\n"
         "3. Відчуйте опору під ногами або тілом.\n"
         "4. Зменште шум, новини, соцмережі.\n"
-        "5. Якщо стан сильний — зверніться до людини поруч або до фахівця."
+        "5. Якщо стан сильний - зверніться до людини поруч або до фахівця."
     )
 
 
@@ -671,7 +671,89 @@ async def language_command(message: Message):
 async def reminder_command(message: Message):
     await message.answer(
         "🗓 Нагадування\n\n"
-        "Цей розділ можна додати пізніше: бот зможе нагадувати зробити коротку вправу або перевірити свій стан."
+        "Цей розділ буде доданий пізніше: бот зможе нагадувати зробити коротку вправу або перевірити свій стан."
+    )
+
+@dp.message(Command("keep"))
+async def keep_command(message: Message):
+    await message.answer(
+        "📌 Тримати під рукою\n\n"
+        "Швидка стабілізація:\n\n"
+
+        "1. Повільно видихніть довше, ніж вдихаєте.\n\n"
+
+        "2. Відчуйте опору під ногами або тілом.\n\n"
+
+        "3. Назвіть 3 предмети навколо.\n\n"
+
+        "4. При сильній напрузі не приймайте різких рішень.\n\n"
+
+        "5. Якщо стан погіршується - зверніться до людини або фахівця."
+    )
+
+@dp.message(Command("review"))
+async def review_command(message: Message, state: FSMContext):
+    await state.set_state(SupportDialog.review_waiting)
+
+    await message.answer(
+        "💌 Напишіть відгук або пропозицію.\n\n"
+        "Що варто покращити в боті?"
+    )
+
+@dp.message(SupportDialog.review_waiting)
+async def save_review(message: Message, state: FSMContext):
+    logging.info(f"NEW REVIEW: {message.text}")
+
+    await state.clear()
+
+    await message.answer(
+        "✅ Дякую за відгук.\n\n"
+        "Вашу відповідь збережено."
+    )
+
+@dp.message(Command("language"))
+async def language_command(message: Message):
+    await message.answer(
+        "🌐 Налаштування мови\n\n"
+        "Зараз бот працює тільки українською мовою."
+    )
+
+@dp.message(Command("contacts"))
+async def contacts_command(message: Message):
+    await message.answer(
+        "☎️ Екстрені контакти\n\n"
+
+        "112 - екстрена допомога\n"
+        "103 - швидка медична допомога\n\n"
+
+        "Lifeline Ukraine:\n"
+        "7333\n\n"
+
+        "Якщо є ризик нашкодити собі - зверніться по допомогу не залишаючись наодинці."
+    )
+
+@dp.message(Command("reminder"))
+async def reminder_command(message: Message):
+    await message.answer(
+        "🗓 Нагадування\n\n"
+        "Ця функція ще в розробці.\n\n"
+        "Пізніше бот зможе надсилати:\n"
+        "• нагадування про вправи\n"
+        "• перевірку стану\n"
+        "• короткі стабілізаційні повідомлення"
+    )
+
+@dp.message(Command("help"))
+async def help_command(message: Message):
+    await message.answer(
+        "ℹ️ Допомога\n\n"
+
+        "/start - почати заново\n"
+        "/keep - швидка самодопомога\n"
+        "/contacts - екстрені контакти\n"
+        "/review - залишити відгук\n"
+        "/language - мова бота\n"
+        "/reminder - нагадування"
     )
 
 async def main():
