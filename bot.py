@@ -124,9 +124,9 @@ async def start_time_yes(message: Message, state: FSMContext):
 
     await message.answer(
         "Оцініть свій рівень напруги від 1 до 10.\n\n"
-        "1–5 — неприємно, але я можу справлятися.\n\n"
-        "6–8 — сильно переживаю, складно займатися справами.\n\n"
-        "9–10 — майже не контролюю емоції, дуже важко.",
+        "1–5 - неприємно, але я можу справлятися.\n\n"
+        "6–8 - сильно переживаю, складно займатися справами.\n\n"
+        "9–10 - майже не контролюю емоції, дуже важко.",
         reply_markup=scale_keyboard
     )
 
@@ -269,9 +269,9 @@ async def impact_check(message: Message, state: FSMContext):
 
     await message.answer(
         "Оцініть свій рівень напруги від 1 до 10.\n\n"
-        "1–5 — неприємно, але я можу справлятися.\n\n"
-        "6–8 — сильно переживаю, складно займатися справами.\n\n"
-        "9–10 — майже не контролюю емоції, дуже важко.",
+        "1–5 - неприємно, але я можу справлятися.\n\n"
+        "6–8 - сильно переживаю, складно займатися справами.\n\n"
+        "9–10 - майже не контролюю емоції, дуже важко.",
         reply_markup=scale_keyboard
     )
 
@@ -517,7 +517,6 @@ async def protocol_running_wrong_input(message: Message):
         reply_markup=protocol_next_keyboard
     )
 
-
 @dp.message(SupportDialog.protocol_feedback, F.text == "Стало легше")
 async def protocol_feedback_better(message: Message, state: FSMContext):
     data = await state.get_data()
@@ -585,9 +584,8 @@ async def protocol_repeat(message: Message, state: FSMContext):
         reply_markup=protocol_next_keyboard
     )
 
-
 @dp.message(SupportDialog.protocol_feedback, F.text == "Стало легше")
-async def protocol_feedback_better(message: Message, state: FSMContext):
+async def protocol_feedback_better_action(message: Message, state: FSMContext):
     data = await state.get_data()
     session_id = data.get("session_id")
 
@@ -595,25 +593,25 @@ async def protocol_feedback_better(message: Message, state: FSMContext):
 
     await state.update_data(risk_level=risk_level)
 
-    text = (
+    answer_text = (
         "Добре. Зараз важливо не перевантажувати себе одразу.\n\n"
         "На найближчі 30 хвилин:\n"
-        "1. Не повертайтесь різко до важкої теми.\n"
-        "2. Залишайтесь у спокійнішому середовищі.\n"
-        "3. Не відкривайте новини або соцмережі.\n"
-        "4. Якщо можете — зробіть ще кілька повільних видихів.\n\n"
+        "1. Залишайтесь у спокійнішому середовищі.\n"
+        "2. Не відкривайте новини або соцмережі.\n"
+        "3. Зробіть ще кілька повільних видихів.\n"
+        "4. Якщо можете - дайте собі трохи тиші.\n\n"
         "Можете завершити діалог або отримати ще одну коротку пораду."
     )
 
     if session_id:
         await save_message(session_id, "user", message.text, "protocol_feedback")
-        await save_message(session_id, "bot", text, "ready_to_finish")
+        await save_message(session_id, "bot", answer_text, "ready_to_finish")
         await update_session_risk(session_id, risk_level, "stabilized")
 
     await state.set_state(SupportDialog.ready_to_finish)
 
     await message.answer(
-        text,
+        answer_text,
         reply_markup=finish_or_advice_keyboard
     )
 
