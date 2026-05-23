@@ -2,7 +2,7 @@ import asyncio
 import logging
 import random
 
-from aiogram import Bot, Dispatcher, F
+from aiogram import Bot, Dispatcher
 from aiogram.types import Message
 from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
@@ -22,17 +22,16 @@ from keyboards import (
     restart_keyboard,
     finish_or_advice_keyboard,
     scale_keyboard,
-    yes_no_keyboard,
     protocol_choice_keyboard,
     protocol_next_keyboard,
     protocol_feedback_keyboard,
     scenario_choice_keyboard,
-    keep_intro_keyboard,
-    keep_finish_keyboard
+    keep_next_keyboard
 )
 from database import init_db, create_session, save_message, update_session_risk
 from protocols import get_protocols
 from scenario_texts import get_state_text_by_risk, get_daily_advice_by_risk
+from bot_commands import BOT_COMMANDS
 from buttons import (
     clean_button,
     BTN_START,
@@ -51,15 +50,45 @@ from buttons import (
     BTN_UNDERSTAND,
     BTN_EXERCISES,
     BTN_DAILY_ADVICE,
-    BTN_KEEP_SHOW,
-    BTN_LATER,
-    BTN_THANKS,
-    BTN_REDUCE_NOW
+    BTN_TO_SURVEY
 )
-from bot_commands import BOT_COMMANDS
+
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
+
+
+KEEP_STEPS = [
+    (
+        "📌 Тримати під рукою\n\n"
+        "Під час сильного стресу люди часто згадують про підтримку вже тоді, "
+        "коли напруга стала занадто великою.\n\n"
+        "Тому краще підготувати для себе прості способи заздалегідь."
+    ),
+    (
+        "1. Закріпіть бота у верхній частині чатів\n\n"
+        "Коли напруга зростає, складніше щось шукати й згадувати.\n"
+        "Якщо бот буде зверху списку чатів — повернутися до вправ буде простіше.\n\n"
+        "Для цього затисніть чат і оберіть «Закріпити»."
+    ),
+    (
+        "2. Створіть короткий сигнал-нагадування\n\n"
+        "Можна поставити нагадування в телефоні на вечір або перед складними подіями.\n\n"
+        "Навіть 5 хвилин повільного дихання чи стабілізації перед напруженим моментом "
+        "часто допомагають легше його пройти."
+    ),
+    (
+        "3. Використовуйте техніки не тільки в кризі\n\n"
+        "Нервова система краще запамʼятовує вправи, якщо використовувати їх "
+        "не лише під час сильного перевантаження.\n\n"
+        "Якщо іноді робити короткі вправи у звичайному стані — "
+        "у складний момент мозку буде легше до них повернутися."
+    ),
+    (
+        "Коли потрібна підтримка, я поруч.\n\n"
+        "Можете перейти до опитування або почати заново через /start."
+    )
+]
 
 
 def button_text(message: Message) -> str:
@@ -139,9 +168,82 @@ async def start(message: Message, state: FSMContext):
         "Я допоможу коротко оцінити ваш стан і запропоную вправу або поради, "
         "які можуть бути корисними саме зараз.\n\n"
         "Бот не замінює психолога або лікаря. "
-        "Якщо є загроза життю чи здоровʼю - зверніться до екстрених служб.\n\n"
+        "Якщо є загроза життю чи здоровʼю — зверніться до екстрених служб.\n\n"
         "Щоб почати, натисніть «Почати».",
         reply_markup=start_keyboard
+    )
+
+
+@dp.message(Command("keep"))
+async def keep_command(message: Message, state: FSMContext):
+    await state.set_state(SupportDialog.keep_flow)
+    await state.update_data(keep_step=0)
+
+    await message.answer(
+        KEEP_STEPS[0],
+        reply_markup=keep_next_keyboard
+    )
+
+
+@dp.message(Command("review"))
+async def review_command(message: Message, state: FSMContext):
+    await state.set_state(SupportDialog.review_waiting)
+
+    await message.answer(
+        "💌 Напишіть відгук або пропозицію.\n\n"
+        "Що варто покращити в боті?"
+    )
+
+
+@dp.message(SupportDialog.review_waiting)
+async def save_review(message: Message, state: FSMContext):
+    logging.info(f"NEW REVIEW: {message.text}")
+
+    await state.clear()
+
+    await message.answer(
+        "✅ Дякую за відгук.\n\n"
+        "Вашу відповідь збережено."
+    )
+
+
+@dp.message(Command("language"))
+async def language_command(message: Message):
+    await message.answer(
+        "🌐 Мова\n\n"
+        "Зараз бот працює українською мовою."
+    )
+
+
+@dp.message(Command("reminder"))
+async def reminder_command(message: Message):
+    await message.answer(
+        "🗓 Нагадування\n\n"
+        "Ця функція ще в розробці.\n\n"
+        "Пізніше бот зможе надсилати нагадування про вправи або коротку перевірку стану."
+    )
+
+
+@dp.message(Command("contacts"))
+async def contacts_command(message: Message):
+    await message.answer(
+        "☎️ Екстрені контакти\n\n"
+        "112 — екстрена допомога\n"
+        "103 — швидка медична допомога\n\n"
+        "Якщо є ризик нашкодити собі — зверніться по допомогу і не залишайтесь наодинці."
+    )
+
+
+@dp.message(Command("help"))
+async def help_command(message: Message):
+    await message.answer(
+        "ℹ️ Допомога\n\n"
+        "/start — почати заново\n"
+        "/keep — тримати бота під рукою\n"
+        "/contacts — екстрені контакти\n"
+        "/review — залишити відгук\n"
+        "/language — мова бота\n"
+        "/reminder — нагадування"
     )
 
 
@@ -171,39 +273,66 @@ async def process_consent(message: Message, state: FSMContext):
         reply_markup=start_time_keyboard
     )
 
-@dp.message(Command("keep"))
-async def keep_command(message: Message, state: FSMContext):
-    await state.set_state(SupportDialog.keep_intro)
+
+@dp.message(SupportDialog.keep_flow)
+async def keep_flow_handler(message: Message, state: FSMContext):
+    selected = button_text(message)
+
+    if selected == BTN_TO_SURVEY:
+        await state.set_state(SupportDialog.scale_check)
+
+        await message.answer(
+            "Оцініть рівень напруги зараз.\n\n"
+            "1–5 — неприємно, але ви ще можете справлятися.\n\n"
+            "6–8 — напруга сильна, складно займатися справами.\n\n"
+            "9–10 — дуже важко, контроль майже втрачається.",
+            reply_markup=scale_keyboard
+        )
+        return
+
+    if selected == BTN_FINISH:
+        await finish_dialog(
+            message,
+            state,
+            "Діалог завершено. Ви можете почати нову сесію будь-коли."
+        )
+        return
+
+    if selected != BTN_NEXT:
+        await message.answer(
+            "Натисніть «Далі» або перейдіть до опитування.",
+            reply_markup=keep_next_keyboard
+        )
+        return
+
+    data = await state.get_data()
+    step = data.get("keep_step", 0) + 1
+
+    if step >= len(KEEP_STEPS):
+        await state.set_state(SupportDialog.consent)
+
+        await message.answer(
+            "Розділ завершено. Щоб почати основний діалог, натисніть «Почати».",
+            reply_markup=start_keyboard
+        )
+        return
+
+    await state.update_data(keep_step=step)
 
     await message.answer(
-        "📌 Тримати під рукою\n\n"
-        "Самодопомога працює краще, якщо згадати про неї до того, як напруга стане максимальною.\n\n"
-        "Покажу три способи, які можна використати у складний момент.",
-        reply_markup=keep_intro_keyboard
+        KEEP_STEPS[step],
+        reply_markup=keep_next_keyboard
     )
 
-@dp.message(Command("review"))
-async def review_command(message: Message):
-    await message.answer(
-        "💌 Відгук\n\n"
-        "Напишіть, що варто покращити в боті."
+
+@dp.message(lambda message: clean_button(message.text or "") == BTN_FINISH)
+async def manual_finish(message: Message, state: FSMContext):
+    await finish_dialog(
+        message,
+        state,
+        "Діалог завершено. Ви можете почати нову сесію будь-коли."
     )
 
-
-@dp.message(Command("language"))
-async def language_command(message: Message):
-    await message.answer(
-        "🌐 Мова\n\n"
-        "На данний час працює тільки, українською мовою."
-    )
-
-
-@dp.message(Command("reminder"))
-async def reminder_command(message: Message):
-    await message.answer(
-        "🗓 Нагадування\n\n"
-        "Ця функція ще в розробці."
-    )   
 
 @dp.message(SupportDialog.start_time_choice)
 async def start_time_choice(message: Message, state: FSMContext):
@@ -220,9 +349,9 @@ async def start_time_choice(message: Message, state: FSMContext):
 
         await message.answer(
             "Оцініть рівень напруги зараз.\n\n"
-            "1–5 - неприємно, але ви ще можете справлятися.\n\n"
-            "6–8 - напруга сильна, складно займатися справами.\n\n"
-            "9–10 - дуже важко, контроль майже втрачається.",
+            "1–5 — неприємно, але ви ще можете справлятися.\n\n"
+            "6–8 — напруга сильна, складно займатися справами.\n\n"
+            "9–10 — дуже важко, контроль майже втрачається.",
             reply_markup=scale_keyboard
         )
         return
@@ -230,7 +359,7 @@ async def start_time_choice(message: Message, state: FSMContext):
     if selected == BTN_NO_FAST or "швидше" in (message.text or ""):
         await message.answer(
             "Можемо почати з короткої самодопомоги. Вона займає близько 1 хвилини.\n\n"
-            "Якщо маєте трохи більше часу - оберіть повний варіант. "
+            "Якщо маєте трохи більше часу — оберіть повний варіант. "
             "Він займає близько 3 хвилин і працює глибше.",
             reply_markup=urgent_protocol_keyboard
         )
@@ -241,15 +370,6 @@ async def start_time_choice(message: Message, state: FSMContext):
     await message.answer(
         "Оберіть один із варіантів нижче.",
         reply_markup=start_time_keyboard
-    )
-
-
-@dp.message(F.text.endswith(BTN_FINISH))
-async def manual_finish(message: Message, state: FSMContext):
-    await finish_dialog(
-        message,
-        state,
-        "Діалог завершено. Ви можете почати нову сесію будь-коли."
     )
 
 
@@ -462,7 +582,7 @@ async def protocol_feedback(message: Message, state: FSMContext):
         )
         return
 
-    if selected == BTN_REPEAT or selected == "Повторити вправу":
+    if selected == BTN_REPEAT:
         data = await state.get_data()
 
         session_id = data.get("session_id")
@@ -592,44 +712,6 @@ async def ready_to_finish(message: Message, state: FSMContext):
     )
 
 
-@dp.message(SupportDialog.safety_check)
-async def safety_check(message: Message, state: FSMContext):
-    data = await state.get_data()
-    session_id = data.get("session_id")
-
-    safety_answer = button_text(message)
-
-    await state.update_data(safety_answer=safety_answer)
-
-    if session_id:
-        await save_message(session_id, "user", message.text, "safety_check")
-
-    if is_crisis(message.text or "") or safety_answer in [BTN_YES, "Так", "Не знаю"]:
-        await state.update_data(risk_level="HIGH")
-
-        if session_id:
-            await save_message(session_id, "bot", CRISIS_TEXT, "crisis_mode")
-            await update_session_risk(session_id, "HIGH", "crisis")
-
-        await state.set_state(SupportDialog.crisis_mode)
-
-        await message.answer(
-            CRISIS_TEXT,
-            reply_markup=restart_keyboard
-        )
-
-        await state.set_state(SupportDialog.finished)
-        return
-
-    await state.set_state(SupportDialog.protocol_choice)
-
-    await message.answer(
-        "Добре. Тоді перейдемо до стабілізаційної вправи.\n\n"
-        "Оберіть формат:",
-        reply_markup=protocol_choice_keyboard
-    )
-
-
 @dp.message(SupportDialog.finished)
 async def finished_message(message: Message, state: FSMContext):
     if button_text(message) == BTN_RESTART:
@@ -653,200 +735,7 @@ async def unknown_message(message: Message, state: FSMContext):
             "Продовжіть відповідати на поточне питання або натисніть «Завершити діалог».",
             reply_markup=dialog_keyboard
         )
-@dp.message(Command("help"))
-async def help_command(message: Message):
-    await message.answer(
-        "ℹ️ Допомога\n\n"
-        "Бот допомагає коротко оцінити стан і підібрати вправи самодопомоги.\n\n"
-        "Основні дії:\n"
-        "🔄 /start - почати спочатку\n"
-        "🗓 /reminder - нагадування\n"
-        "📌 /keep - корисна інформація під рукою\n"
-        "☎️ /contacts - екстрені контакти"
-    )
 
-
-@dp.message(Command("contacts"))
-async def contacts_command(message: Message):
-    await message.answer(
-        "☎️ Екстрені контакти\n\n"
-        "Україна:\n"
-        "112 - єдиний номер екстреної допомоги\n"
-        "103 - швидка медична допомога\n\n"
-        "Якщо є негайна небезпека для життя або здоровʼя - телефонуйте 112 або 103."
-    )
-
-
-@dp.message(Command("keep"))
-async def keep_command(message: Message):
-    await message.answer(
-        "📌 Тримати під рукою\n\n"
-        "Короткий план самодопомоги:\n"
-        "1. Зупиніться на кілька секунд.\n"
-        "2. Зробіть повільний видих.\n"
-        "3. Відчуйте опору під ногами або тілом.\n"
-        "4. Зменште шум, новини, соцмережі.\n"
-        "5. Якщо стан сильний - зверніться до людини поруч або до фахівця."
-    )
-
-
-@dp.message(Command("review"))
-async def review_command(message: Message):
-    await message.answer(
-        "💌 Відгук\n\n"
-        "Напишіть, що варто покращити в боті: тексти, вправи, кнопки або логіку діалогу."
-    )
-
-
-@dp.message(Command("language"))
-async def language_command(message: Message):
-    await message.answer(
-        "🌐 Мова\n\n"
-        "Зараз бот працює українською мовою."
-    )
-
-
-@dp.message(Command("reminder"))
-async def reminder_command(message: Message):
-    await message.answer(
-        "🗓 Нагадування\n\n"
-        "Цей розділ буде доданий пізніше: бот зможе нагадувати зробити коротку вправу або перевірити свій стан."
-    )
-
-@dp.message(Command("keep"))
-async def keep_command(message: Message):
-    await message.answer(
-        "📌 Тримати під рукою\n\n"
-        "Швидка стабілізація:\n\n"
-
-        "1. Повільно видихніть довше, ніж вдихаєте.\n\n"
-
-        "2. Відчуйте опору під ногами або тілом.\n\n"
-
-        "3. Назвіть 3 предмети навколо.\n\n"
-
-        "4. При сильній напрузі не приймайте різких рішень.\n\n"
-
-        "5. Якщо стан погіршується - зверніться до людини або фахівця."
-    )
-
-@dp.message(Command("review"))
-async def review_command(message: Message, state: FSMContext):
-    await state.set_state(SupportDialog.review_waiting)
-
-    await message.answer(
-        "💌 Напишіть відгук або пропозицію.\n\n"
-        "Що варто покращити в боті?"
-    )
-
-@dp.message(SupportDialog.review_waiting)
-async def save_review(message: Message, state: FSMContext):
-    logging.info(f"NEW REVIEW: {message.text}")
-
-    await state.clear()
-
-    await message.answer(
-        "✅ Дякую за відгук.\n\n"
-        "Вашу відповідь збережено."
-    )
-
-@dp.message(Command("language"))
-async def language_command(message: Message):
-    await message.answer(
-        "🌐 Налаштування мови\n\n"
-        "Зараз бот працює тільки українською мовою."
-    )
-
-@dp.message(Command("contacts"))
-async def contacts_command(message: Message):
-    await message.answer(
-        "☎️ Екстрені контакти\n\n"
-
-        "112 - екстрена допомога\n"
-        "103 - швидка медична допомога\n\n"
-
-        "Lifeline Ukraine:\n"
-        "7333\n\n"
-
-        "Якщо є ризик нашкодити собі - зверніться по допомогу не залишаючись наодинці."
-    )
-
-@dp.message(Command("reminder"))
-async def reminder_command(message: Message):
-    await message.answer(
-        "🗓 Нагадування\n\n"
-        "Ця функція ще в розробці.\n\n"
-        "Пізніше бот зможе надсилати:\n"
-        "• нагадування про вправи\n"
-        "• перевірку стану\n"
-        "• короткі стабілізаційні повідомлення"
-    )
-
-@dp.message(Command("help"))
-async def help_command(message: Message):
-    await message.answer(
-        "ℹ️ Допомога\n\n"
-
-        "/start - почати заново\n"
-        "/keep - швидка самодопомога\n"
-        "/contacts - екстрені контакти\n"
-        "/review - залишити відгук\n"
-        "/language - мова бота\n"
-        "/reminder - нагадування"
-    )
-
-@dp.message(SupportDialog.keep_intro)
-async def keep_intro_handler(message: Message, state: FSMContext):
-    selected = button_text(message)
-
-    if selected == BTN_LATER:
-        await state.clear()
-
-        await message.answer(
-            "Добре. Цей розділ можна відкрити пізніше через /keep.",
-            reply_markup=restart_keyboard
-        )
-        return
-
-    if selected != BTN_KEEP_SHOW:
-        await message.answer(
-            "Оберіть один із варіантів нижче.",
-            reply_markup=keep_intro_keyboard
-        )
-        return
-
-    await message.answer(
-        "📌 Три способи, які варто тримати під рукою\n\n"
-        "1. Довший видих\n"
-        "Коли напруга росте, зробіть кілька видихів довшими за вдих. "
-        "Це допомагає тілу поступово знижувати збудження.\n\n"
-        "2. Опора\n"
-        "Відчуйте стопи на підлозі або спину на стільці. "
-        "Це повертає увагу з тривожних думок у тіло.\n\n"
-        "3. Менше стимулів\n"
-        "На кілька хвилин приберіть новини, гучні звуки й зайві екрани. "
-        "Нервовій системі легше стабілізуватись, коли менше подразників.\n\n"
-        "Найефективніше - тренувати ці дії не лише в сильному стресі, а й у легшому напруженні.",
-        reply_markup=keep_finish_keyboard
-    )
-
-@dp.message(SupportDialog.keep_intro)
-async def keep_finish_handler(message: Message, state: FSMContext):
-    selected = button_text(message)
-
-    if selected == BTN_THANKS:
-        await state.clear()
-        await message.answer("✅ Добре. Розділ /keep завжди можна відкрити з меню.")
-        return
-
-    if selected == BTN_REDUCE_NOW:
-        await state.set_state(SupportDialog.protocol_choice)
-
-        await message.answer(
-            "Оберіть формат вправи:",
-            reply_markup=protocol_choice_keyboard
-        )
-        return
 
 async def main():
     setup_logger()
