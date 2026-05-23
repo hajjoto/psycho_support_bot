@@ -42,6 +42,18 @@ from keyboards import (
 from database import init_db, create_session, save_message, update_session_risk
 from protocols import get_protocols
 from scenario_texts import get_state_text_by_risk, get_daily_advice_by_risk
+from ui_texts import (
+    START_TEXT,
+    TIME_CHOICE_TEXT,
+    URGENT_PROTOCOL_TEXT,
+    SCALE_TEXT,
+    SCENARIO_CHOICE_TEXT,
+    PROTOCOL_CHOICE_TEXT,
+    PROTOCOL_FEEDBACK_TEXT,
+    STABILIZED_TEXT,
+    WRONG_CHOICE_TEXT,
+    FINISH_TEXT
+)
 
 
 bot = Bot(token=BOT_TOKEN)
@@ -141,7 +153,7 @@ async def start_time_no(message: Message, state: FSMContext):
 
     await message.answer(
         "Можемо запропонувати протокол термінової самодопомоги: він займає приблизно 1 хвилину.\n\n"
-        "Якщо у вас є трохи більше часу — оберіть повний варіант. Він займає близько 3 хвилин і працює глибше.",
+        "Якщо у вас є трохи більше часу - оберіть повний варіант. Він займає близько 3 хвилин і працює глибше.",
         reply_markup=urgent_protocol_keyboard
     )
 
