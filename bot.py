@@ -4,7 +4,7 @@ import random
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 
@@ -50,6 +50,7 @@ from buttons import (
     BTN_EXERCISES,
     BTN_DAILY_ADVICE
 )
+from bot_commands import BOT_COMMANDS
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
@@ -613,7 +614,65 @@ async def unknown_message(message: Message, state: FSMContext):
             "Продовжіть відповідати на поточне питання або натисніть «Завершити діалог».",
             reply_markup=dialog_keyboard
         )
+@dp.message(Command("help"))
+async def help_command(message: Message):
+    await message.answer(
+        "ℹ️ Допомога\n\n"
+        "Бот допомагає коротко оцінити стан і підібрати вправи самодопомоги.\n\n"
+        "Основні дії:\n"
+        "🔄 /start — почати спочатку\n"
+        "🗓 /reminder — нагадування\n"
+        "📌 /keep — корисна інформація під рукою\n"
+        "☎️ /contacts — екстрені контакти"
+    )
 
+
+@dp.message(Command("contacts"))
+async def contacts_command(message: Message):
+    await message.answer(
+        "☎️ Екстрені контакти\n\n"
+        "Україна:\n"
+        "112 — єдиний номер екстреної допомоги\n"
+        "103 — швидка медична допомога\n\n"
+        "Якщо є негайна небезпека для життя або здоровʼя — телефонуйте 112 або 103."
+    )
+
+
+@dp.message(Command("keep"))
+async def keep_command(message: Message):
+    await message.answer(
+        "📌 Тримати під рукою\n\n"
+        "Короткий план самодопомоги:\n"
+        "1. Зупиніться на кілька секунд.\n"
+        "2. Зробіть повільний видих.\n"
+        "3. Відчуйте опору під ногами або тілом.\n"
+        "4. Зменште шум, новини, соцмережі.\n"
+        "5. Якщо стан сильний — зверніться до людини поруч або до фахівця."
+    )
+
+
+@dp.message(Command("review"))
+async def review_command(message: Message):
+    await message.answer(
+        "💌 Відгук\n\n"
+        "Напишіть, що варто покращити в боті: тексти, вправи, кнопки або логіку діалогу."
+    )
+
+
+@dp.message(Command("language"))
+async def language_command(message: Message):
+    await message.answer(
+        "🌐 Мова\n\n"
+        "Зараз бот працює українською мовою."
+    )
+
+
+@dp.message(Command("reminder"))
+async def reminder_command(message: Message):
+    await message.answer(
+        "🗓 Нагадування\n\n"
+        "Цей розділ можна додати пізніше: бот зможе нагадувати зробити коротку вправу або перевірити свій стан."
+    )
 
 async def main():
     setup_logger()
@@ -621,6 +680,8 @@ async def main():
 
     await init_db()
     logging.info("Database initialized")
+
+    await bot.set_my_commands(BOT_COMMANDS)
 
     await dp.start_polling(bot)
 
