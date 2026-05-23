@@ -26,7 +26,9 @@ from keyboards import (
     protocol_choice_keyboard,
     protocol_next_keyboard,
     protocol_feedback_keyboard,
-    scenario_choice_keyboard
+    scenario_choice_keyboard,
+    keep_intro_keyboard,
+    keep_finish_keyboard
 )
 from database import init_db, create_session, save_message, update_session_risk
 from protocols import get_protocols
@@ -48,7 +50,11 @@ from buttons import (
     BTN_FULL,
     BTN_UNDERSTAND,
     BTN_EXERCISES,
-    BTN_DAILY_ADVICE
+    BTN_DAILY_ADVICE,
+    BTN_KEEP_SHOW,
+    BTN_LATER,
+    BTN_THANKS,
+    BTN_REDUCE_NOW
 )
 from bot_commands import BOT_COMMANDS
 
@@ -165,6 +171,39 @@ async def process_consent(message: Message, state: FSMContext):
         reply_markup=start_time_keyboard
     )
 
+@dp.message(Command("keep"))
+async def keep_command(message: Message, state: FSMContext):
+    await state.set_state(SupportDialog.keep_intro)
+
+    await message.answer(
+        "📌 Тримати під рукою\n\n"
+        "Самодопомога працює краще, якщо згадати про неї до того, як напруга стане максимальною.\n\n"
+        "Покажу три способи, які можна використати у складний момент.",
+        reply_markup=keep_intro_keyboard
+    )
+
+@dp.message(Command("review"))
+async def review_command(message: Message):
+    await message.answer(
+        "💌 Відгук\n\n"
+        "Напишіть, що варто покращити в боті."
+    )
+
+
+@dp.message(Command("language"))
+async def language_command(message: Message):
+    await message.answer(
+        "🌐 Мова\n\n"
+        "На данний час працює тільки, українською мовою."
+    )
+
+
+@dp.message(Command("reminder"))
+async def reminder_command(message: Message):
+    await message.answer(
+        "🗓 Нагадування\n\n"
+        "Ця функція ще в розробці."
+    )   
 
 @dp.message(SupportDialog.start_time_choice)
 async def start_time_choice(message: Message, state: FSMContext):
@@ -755,6 +794,59 @@ async def help_command(message: Message):
         "/language - мова бота\n"
         "/reminder - нагадування"
     )
+
+@dp.message(SupportDialog.keep_intro)
+async def keep_intro_handler(message: Message, state: FSMContext):
+    selected = button_text(message)
+
+    if selected == BTN_LATER:
+        await state.clear()
+
+        await message.answer(
+            "Добре. Цей розділ можна відкрити пізніше через /keep.",
+            reply_markup=restart_keyboard
+        )
+        return
+
+    if selected != BTN_KEEP_SHOW:
+        await message.answer(
+            "Оберіть один із варіантів нижче.",
+            reply_markup=keep_intro_keyboard
+        )
+        return
+
+    await message.answer(
+        "📌 Три способи, які варто тримати під рукою\n\n"
+        "1. Довший видих\n"
+        "Коли напруга росте, зробіть кілька видихів довшими за вдих. "
+        "Це допомагає тілу поступово знижувати збудження.\n\n"
+        "2. Опора\n"
+        "Відчуйте стопи на підлозі або спину на стільці. "
+        "Це повертає увагу з тривожних думок у тіло.\n\n"
+        "3. Менше стимулів\n"
+        "На кілька хвилин приберіть новини, гучні звуки й зайві екрани. "
+        "Нервовій системі легше стабілізуватись, коли менше подразників.\n\n"
+        "Найефективніше - тренувати ці дії не лише в сильному стресі, а й у легшому напруженні.",
+        reply_markup=keep_finish_keyboard
+    )
+
+@dp.message(SupportDialog.keep_intro)
+async def keep_finish_handler(message: Message, state: FSMContext):
+    selected = button_text(message)
+
+    if selected == BTN_THANKS:
+        await state.clear()
+        await message.answer("✅ Добре. Розділ /keep завжди можна відкрити з меню.")
+        return
+
+    if selected == BTN_REDUCE_NOW:
+        await state.set_state(SupportDialog.protocol_choice)
+
+        await message.answer(
+            "Оберіть формат вправи:",
+            reply_markup=protocol_choice_keyboard
+        )
+        return
 
 async def main():
     setup_logger()
