@@ -18,6 +18,7 @@ BTN_KEEP_SHOW = "Показати способи"
 BTN_LATER = "Іншим разом"
 BTN_THANKS = "Дякую"
 BTN_REDUCE_NOW = "Знизити напругу зараз"
+BTN_TO_SURVEY = "Перейти до опитування"
 
 
 def clean_button(text: str) -> str:
@@ -43,6 +44,7 @@ def clean_button(text: str) -> str:
     BTN_UNDERSTAND,
     BTN_EXERCISES,
     BTN_DAILY_ADVICE,
+    BTN_TO_SURVEY,
     ]
 
     for button in buttons:
