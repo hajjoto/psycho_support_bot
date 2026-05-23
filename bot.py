@@ -45,9 +45,11 @@ from buttons import (
     BTN_NEW_EXERCISE,
     BTN_FINISH,
     BTN_SHORT,
-    BTN_FULL
+    BTN_FULL,
+    BTN_UNDERSTAND,
+    BTN_EXERCISES,
+    BTN_DAILY_ADVICE
 )
-
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
@@ -258,21 +260,21 @@ async def scenario_choice(message: Message, state: FSMContext):
     session_id = data.get("session_id")
     risk_level = data.get("risk_level", "LOW")
 
-    if selected == "Зрозуміти свій стан":
+    if selected == BTN_UNDERSTAND:
         await message.answer(
             get_state_text_by_risk(risk_level),
             reply_markup=scenario_choice_keyboard
         )
         return
 
-    if selected == "Поради на день":
+    if selected == BTN_DAILY_ADVICE:
         await message.answer(
             get_daily_advice_by_risk(risk_level),
             reply_markup=scenario_choice_keyboard
         )
         return
 
-    if selected == "Перейти до вправ":
+    if selected == BTN_EXERCISES:
         if session_id:
             await save_message(session_id, "user", message.text, "scenario_choice")
 
