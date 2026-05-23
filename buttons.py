@@ -19,6 +19,10 @@ BTN_LATER = "Іншим разом"
 BTN_THANKS = "Дякую"
 BTN_REDUCE_NOW = "Знизити напругу зараз"
 BTN_TO_SURVEY = "Перейти до опитування"
+BTN_STATE_EXPLANATION = "Що зі мною відбувається"
+BTN_WHAT_HELPS = "Що може допомогти"
+BTN_AVOID = "Чого краще не робити"
+BTN_PLAN = "План на 30 хвилин"
 
 
 def clean_button(text: str) -> str:
