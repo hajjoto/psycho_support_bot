@@ -74,7 +74,7 @@ KEEP_STEPS = [
     (
         "1. Закріпіть бота у верхній частині чатів\n\n"
         "Коли напруга зростає, складніше щось шукати й згадувати.\n"
-        "Якщо бот буде зверху списку чатів — повернутися до вправ буде простіше.\n\n"
+        "Якщо бот буде зверху списку чатів - повернутися до вправ буде простіше.\n\n"
         "Для цього затисніть чат і оберіть «Закріпити»."
     ),
     (
@@ -87,7 +87,7 @@ KEEP_STEPS = [
         "3. Використовуйте техніки не тільки в кризі\n\n"
         "Нервова система краще запамʼятовує вправи, якщо використовувати їх "
         "не лише під час сильного перевантаження.\n\n"
-        "Якщо іноді робити короткі вправи у звичайному стані — "
+        "Якщо іноді робити короткі вправи у звичайному стані - "
         "у складний момент мозку буде легше до них повернутися."
     ),
     (
@@ -467,21 +467,24 @@ async def support_detail_handler(message: Message, state: FSMContext):
     data = await state.get_data()
     risk_level = data.get("risk_level", "LOW")
 
-    if selected == BTN_STATE_EXPLANATION:
-        block = "explanation"
-    elif selected == BTN_WHAT_HELPS:
+    if selected == BTN_WHAT_HELPS:
         block = "helps"
+
     elif selected == BTN_AVOID:
         block = "avoid"
+
     elif selected == BTN_PLAN:
         block = "plan"
+
     elif selected == BTN_EXERCISES:
         await state.set_state(SupportDialog.protocol_choice)
+
         await message.answer(
             "Оберіть формат вправи:",
             reply_markup=protocol_choice_keyboard
         )
         return
+
     elif selected == BTN_FINISH:
         await finish_dialog(
             message,
@@ -489,6 +492,7 @@ async def support_detail_handler(message: Message, state: FSMContext):
             "Діалог завершено. Ви можете почати нову сесію будь-коли."
         )
         return
+
     else:
         await message.answer(
             "Оберіть один із варіантів нижче.",
