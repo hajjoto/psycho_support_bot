@@ -42,19 +42,6 @@ from keyboards import (
 from database import init_db, create_session, save_message, update_session_risk
 from protocols import get_protocols
 from scenario_texts import get_state_text_by_risk, get_daily_advice_by_risk
-from ui_texts import (
-    START_TEXT,
-    TIME_CHOICE_TEXT,
-    URGENT_PROTOCOL_TEXT,
-    SCALE_TEXT,
-    SCENARIO_CHOICE_TEXT,
-    PROTOCOL_CHOICE_TEXT,
-    PROTOCOL_FEEDBACK_TEXT,
-    STABILIZED_TEXT,
-    WRONG_CHOICE_TEXT,
-    FINISH_TEXT
-)
-
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
