@@ -269,7 +269,7 @@ async def process_consent(message: Message, state: FSMContext):
     logging.info(f"New anonymous session created: {session_id}")
 
     await message.answer(
-        "Чи можете ви приділити собі приблизно 3 хвилини?",
+        "Чи можете ви приділити собі пару хвилини?",
         reply_markup=start_time_keyboard
     )
 
