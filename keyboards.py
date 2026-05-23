@@ -1,9 +1,16 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
+start_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="▶️ Почати")]
+    ],
+    resize_keyboard=True
+)
+
 start_time_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Так")],
-        [KeyboardButton(text="Ні, потрібно швидше")]
+        [KeyboardButton(text="✅ Так")],
+        [KeyboardButton(text="❌ Ні, потрібно швидше")]
     ],
     resize_keyboard=True
 )
@@ -11,18 +18,12 @@ start_time_keyboard = ReplyKeyboardMarkup(
 
 urgent_protocol_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Терміновий протокол")],
-        [KeyboardButton(text="Повний варіант")]
+        [KeyboardButton(text="⏱️ Терміновий протокол")],
+        [KeyboardButton(text="⌛ Повний варіант")]
     ],
     resize_keyboard=True
 )
 
-start_keyboard = ReplyKeyboardMarkup(
-    keyboard=[
-        [KeyboardButton(text="Почати")]
-    ],
-    resize_keyboard=True
-)
 
 
 dialog_keyboard = ReplyKeyboardMarkup(
@@ -68,9 +69,9 @@ next_keyboard = ReplyKeyboardMarkup(
 
 scale_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="1-5")],
-        [KeyboardButton(text="6-8")],
-        [KeyboardButton(text="9-10")],
+        [KeyboardButton(text="❗ 9-10")],
+        [KeyboardButton(text="⚠️ 6-8")],
+        [KeyboardButton(text="🟡 1-5")],
         [KeyboardButton(text="Завершити діалог")]
     ],
     resize_keyboard=True
@@ -105,9 +106,9 @@ protocol_choice_keyboard = ReplyKeyboardMarkup(
 
 protocol_next_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Далі")],
-        [KeyboardButton(text="Завершити діалог")]
-    ],
+        [KeyboardButton(text="✅ Далі")],
+        [KeyboardButton(text="Завершити")],
+        ],
     resize_keyboard=True
 )
 
