@@ -541,68 +541,80 @@ async def protocol_feedback_better(message: Message, state: FSMContext):
         reply_markup=finish_or_advice_keyboard
     )
 
-
 @dp.message(SupportDialog.protocol_feedback, F.text == "Повторити вправу")
 async def protocol_repeat(message: Message, state: FSMContext):
     data = await state.get_data()
-    protocol = data.get("current_protocol")
+
     session_id = data.get("session_id")
+    branch = data.get("branch", "UNCLEAR")
+    mode = data.get("protocol_mode", "SHORT")
+    current_protocol = data.get("current_protocol")
+    used_protocol_ids = data.get("used_protocol_ids", [])
 
-    if not protocol:
-        await state.set_state(SupportDialog.protocol_choice)
+    if current_protocol:
+        used_protocol_ids.append(current_protocol.get("id"))
 
-        await message.answer(
-            "Оберіть формат вправи:",
-            reply_markup=protocol_choice_keyboard
-        )
-        return
+    protocols = get_protocols(branch, mode)
 
-    await state.update_data(protocol_step=0)
+    available_protocols = [
+        protocol for protocol in protocols
+        if protocol.get("id") not in used_protocol_ids
+    ]
+
+    if not available_protocols:
+        available_protocols = protocols
+        used_protocol_ids = []
+
+    selected_protocol = random.choice(available_protocols)
+
+    await state.update_data(
+        current_protocol=selected_protocol,
+        protocol_step=0,
+        used_protocol_ids=used_protocol_ids,
+        protocol_attempts=data.get("protocol_attempts", 0) + 1
+    )
 
     if session_id:
         await save_message(session_id, "user", message.text, "protocol_repeat")
-        await save_message(session_id, "bot", protocol["steps"][0], "protocol_step_0_repeat")
+        await save_message(session_id, "bot", selected_protocol["steps"][0], "protocol_step_0_repeat")
 
     await state.set_state(SupportDialog.protocol_running)
 
     await message.answer(
-        protocol["steps"][0],
+        selected_protocol["steps"][0],
         reply_markup=protocol_next_keyboard
     )
 
 
-@dp.message(SupportDialog.protocol_feedback, F.text == "Не стало легше")
-async def protocol_feedback_not_better(message: Message, state: FSMContext):
+@dp.message(SupportDialog.protocol_feedback, F.text == "Стало легше")
+async def protocol_feedback_better(message: Message, state: FSMContext):
     data = await state.get_data()
-    attempts = data.get("protocol_attempts", 1)
     session_id = data.get("session_id")
+
+    risk_level = analyze_final_risk(data)
+
+    await state.update_data(risk_level=risk_level)
+
+    text = (
+        "Добре. Зараз важливо не перевантажувати себе одразу.\n\n"
+        "На найближчі 30 хвилин:\n"
+        "1. Не повертайтесь різко до важкої теми.\n"
+        "2. Залишайтесь у спокійнішому середовищі.\n"
+        "3. Не відкривайте новини або соцмережі.\n"
+        "4. Якщо можете — зробіть ще кілька повільних видихів.\n\n"
+        "Можете завершити діалог або отримати ще одну коротку пораду."
+    )
 
     if session_id:
         await save_message(session_id, "user", message.text, "protocol_feedback")
+        await save_message(session_id, "bot", text, "ready_to_finish")
+        await update_session_risk(session_id, risk_level, "stabilized")
 
-    if attempts >= 2:
-        text = (
-            "Якщо після кількох вправ напруга не знижується, краще не залишатися з цим наодинці.\n\n"
-            "Зараз важливо перейти до безпечного режиму:\n"
-            "1. Залишайтесь у місці, де вам фізично безпечно.\n"
-            "2. Не приймайте різких рішень у піку емоцій.\n"
-            "3. Напишіть або подзвоніть людині, якій довіряєте.\n"
-            "4. Якщо з’являються думки нашкодити собі — зверніться до екстреної допомоги."
-        )
-
-        if session_id:
-            await save_message(session_id, "bot", text, "specialist_support")
-            await update_session_risk(session_id, data.get("risk_level", "MEDIUM"), "finished")
-
-        await finish_dialog(message, state, text)
-        return
-
-    await state.set_state(SupportDialog.protocol_choice)
+    await state.set_state(SupportDialog.ready_to_finish)
 
     await message.answer(
-        "Добре. Тоді спробуємо інший підхід.\n\n"
-        "Оберіть формат наступної вправи:",
-        reply_markup=protocol_choice_keyboard
+        text,
+        reply_markup=finish_or_advice_keyboard
     )
 
 
