@@ -130,6 +130,16 @@ done_next_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
+scenario_choice_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="Зрозуміти свій стан")],
+        [KeyboardButton(text="Перейти до вправ")],
+        [KeyboardButton(text="Поради на день")],
+        [KeyboardButton(text="Завершити діалог")]
+    ],
+    resize_keyboard=True
+)
+
 finish_or_advice_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Завершити діалог")],
