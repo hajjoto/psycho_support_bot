@@ -42,6 +42,19 @@ from keyboards import (
 from database import init_db, create_session, save_message, update_session_risk
 from protocols import get_protocols
 from scenario_texts import get_state_text_by_risk, get_daily_advice_by_risk
+from buttons import (
+    clean_button,
+    BTN_START,
+    BTN_RESTART,
+    BTN_YES,
+    BTN_NO_FAST,
+    BTN_NEXT,
+    BTN_BETTER,
+    BTN_NOT_BETTER,
+    BTN_REPEAT,
+    BTN_ADVICE,
+    BTN_FINISH,
+)
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
@@ -716,6 +729,21 @@ async def finished_message(message: Message):
         reply_markup=restart_keyboard
     )
 
+@dp.message(SupportDialog.protocol_feedback)
+async def protocol_feedback_handler(message: Message, state: FSMContext):
+    button = clean_button(message.text)
+
+    if button == BTN_BETTER:
+        ...
+        return
+
+    if button == BTN_NOT_BETTER:
+        ...
+        return
+
+    if button == BTN_REPEAT:
+        ...
+        return
 
 @dp.message()
 async def unknown_message(message: Message, state: FSMContext):
