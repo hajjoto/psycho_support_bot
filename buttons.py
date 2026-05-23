@@ -19,7 +19,6 @@ BTN_LATER = "Іншим разом"
 BTN_THANKS = "Дякую"
 BTN_REDUCE_NOW = "Знизити напругу зараз"
 BTN_TO_SURVEY = "Перейти до опитування"
-BTN_STATE_EXPLANATION = "Що зі мною відбувається"
 BTN_WHAT_HELPS = "Що може допомогти"
 BTN_AVOID = "Чого краще не робити"
 BTN_PLAN = "План на 30 хвилин"
@@ -32,23 +31,30 @@ def clean_button(text: str) -> str:
     text = text.strip()
 
     buttons = [
-    BTN_START,
-    BTN_RESTART,
-    BTN_YES,
-    BTN_NO_FAST,
-    BTN_NEXT,
-    BTN_BETTER,
-    BTN_NOT_BETTER,
-    BTN_REPEAT,
-    BTN_ADVICE,
-    BTN_NEW_EXERCISE,
-    BTN_FINISH,
-    BTN_SHORT,
-    BTN_FULL,
-    BTN_UNDERSTAND,
-    BTN_EXERCISES,
-    BTN_DAILY_ADVICE,
-    BTN_TO_SURVEY,
+        BTN_START,
+        BTN_RESTART,
+        BTN_YES,
+        BTN_NO_FAST,
+        BTN_NEXT,
+        BTN_BETTER,
+        BTN_NOT_BETTER,
+        BTN_REPEAT,
+        BTN_ADVICE,
+        BTN_NEW_EXERCISE,
+        BTN_FINISH,
+        BTN_SHORT,
+        BTN_FULL,
+        BTN_UNDERSTAND,
+        BTN_EXERCISES,
+        BTN_DAILY_ADVICE,
+        BTN_KEEP_SHOW,
+        BTN_LATER,
+        BTN_THANKS,
+        BTN_REDUCE_NOW,
+        BTN_TO_SURVEY,
+        BTN_WHAT_HELPS,
+        BTN_AVOID,
+        BTN_PLAN
     ]
 
     for button in buttons:
