@@ -117,6 +117,22 @@ scenario_choice_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
+keep_intro_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="📖 Показати способи")],
+        [KeyboardButton(text="⏳ Іншим разом")]
+    ],
+    resize_keyboard=True
+)
+
+
+keep_finish_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="✅ Дякую")],
+        [KeyboardButton(text="▶️ Знизити напругу зараз")]
+    ],
+    resize_keyboard=True
+)
 
 finish_or_advice_keyboard = ReplyKeyboardMarkup(
     keyboard=[
