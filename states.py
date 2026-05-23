@@ -32,3 +32,4 @@ class SupportDialog(StatesGroup):
     review_waiting = State()
     keep_intro = State()
     keep_flow = State()
+    support_detail = State()
