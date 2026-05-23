@@ -14,6 +14,10 @@ BTN_FULL = "Повна вправа"
 BTN_UNDERSTAND = "Зрозуміти свій стан"
 BTN_EXERCISES = "Перейти до вправ"
 BTN_DAILY_ADVICE = "Поради на день"
+BTN_KEEP_SHOW = "Показати способи"
+BTN_LATER = "Іншим разом"
+BTN_THANKS = "Дякую"
+BTN_REDUCE_NOW = "Знизити напругу зараз"
 
 
 def clean_button(text: str) -> str:
