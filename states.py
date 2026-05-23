@@ -31,3 +31,4 @@ class SupportDialog(StatesGroup):
     daily_advice = State()
     review_waiting = State()
     keep_intro = State()
+    keep_flow = State()
