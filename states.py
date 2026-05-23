@@ -30,3 +30,4 @@ class SupportDialog(StatesGroup):
     psychoeducation = State()
     daily_advice = State()
     review_waiting = State()
+    keep_intro = State()
