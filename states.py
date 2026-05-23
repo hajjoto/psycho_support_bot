@@ -33,3 +33,7 @@ class SupportDialog(StatesGroup):
     protocol_feedback = State()
 
     start_time_choice = State()
+
+    scenario_choice = State()
+    psychoeducation = State()
+    daily_advice = State()
