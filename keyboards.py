@@ -1,11 +1,13 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
+
 start_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="▶️ Почати")]
     ],
     resize_keyboard=True
 )
+
 
 start_time_keyboard = ReplyKeyboardMarkup(
     keyboard=[
@@ -25,10 +27,9 @@ urgent_protocol_keyboard = ReplyKeyboardMarkup(
 )
 
 
-
 dialog_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Завершити діалог")]
+        [KeyboardButton(text="⛔ Завершити діалог")]
     ],
     resize_keyboard=True
 )
@@ -36,8 +37,11 @@ dialog_keyboard = ReplyKeyboardMarkup(
 
 feedback_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Стало легше"), KeyboardButton(text="Не стало легше")],
-        [KeyboardButton(text="Завершити діалог")]
+        [
+            KeyboardButton(text="✅ Стало легше"),
+            KeyboardButton(text="❌ Не стало легше")
+        ],
+        [KeyboardButton(text="⛔ Завершити діалог")]
     ],
     resize_keyboard=True
 )
@@ -45,23 +49,16 @@ feedback_keyboard = ReplyKeyboardMarkup(
 
 restart_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Почати нову сесію")]
+        [KeyboardButton(text="🔄 Почати нову сесію")]
     ],
     resize_keyboard=True
 )
 
-feedback_keyboard = ReplyKeyboardMarkup(
-    keyboard=[
-        [KeyboardButton(text="Стало легше"), KeyboardButton(text="Не стало легше")],
-        [KeyboardButton(text="Завершити діалог")]
-    ],
-    resize_keyboard=True
-)
 
 next_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Далі")],
-        [KeyboardButton(text="Завершити діалог")]
+        [KeyboardButton(text="➡️ Далі")],
+        [KeyboardButton(text="⛔ Завершити діалог")]
     ],
     resize_keyboard=True
 )
@@ -72,7 +69,7 @@ scale_keyboard = ReplyKeyboardMarkup(
         [KeyboardButton(text="❗ 9-10")],
         [KeyboardButton(text="⚠️ 6-8")],
         [KeyboardButton(text="🟡 1-5")],
-        [KeyboardButton(text="Завершити діалог")]
+        [KeyboardButton(text="⛔ Завершити діалог")]
     ],
     resize_keyboard=True
 )
@@ -80,25 +77,21 @@ scale_keyboard = ReplyKeyboardMarkup(
 
 yes_no_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Так"), KeyboardButton(text="Ні")],
-        [KeyboardButton(text="Завершити діалог")]
+        [
+            KeyboardButton(text="✅ Так"),
+            KeyboardButton(text="❌ Ні")
+        ],
+        [KeyboardButton(text="⛔ Завершити діалог")]
     ],
     resize_keyboard=True
 )
 
-yes_no_keyboard = ReplyKeyboardMarkup(
-    keyboard=[
-        [KeyboardButton(text="Так"), KeyboardButton(text="Ні")],
-        [KeyboardButton(text="Завершити діалог")]
-    ],
-    resize_keyboard=True
-)
 
 protocol_choice_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Короткий варіант")],
-        [KeyboardButton(text="Повний варіант")],
-        [KeyboardButton(text="Завершити діалог")]
+        [KeyboardButton(text="⚡ Короткий варіант")],
+        [KeyboardButton(text="🧘 Повний варіант")],
+        [KeyboardButton(text="⛔ Завершити діалог")]
     ],
     resize_keyboard=True
 )
@@ -107,17 +100,20 @@ protocol_choice_keyboard = ReplyKeyboardMarkup(
 protocol_next_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="✅ Далі")],
-        [KeyboardButton(text="Завершити")],
-        ],
+        [KeyboardButton(text="⛔ Завершити діалог")]
+    ],
     resize_keyboard=True
 )
 
 
 protocol_feedback_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Стало легше"), KeyboardButton(text="Не стало легше")],
-        [KeyboardButton(text="Повторити вправу")],
-        [KeyboardButton(text="Завершити діалог")]
+        [
+            KeyboardButton(text="✅ Стало легше"),
+            KeyboardButton(text="❌ Не стало легше")
+        ],
+        [KeyboardButton(text="🔄 Повторити вправу")],
+        [KeyboardButton(text="⛔ Завершити діалог")]
     ],
     resize_keyboard=True
 )
@@ -125,26 +121,28 @@ protocol_feedback_keyboard = ReplyKeyboardMarkup(
 
 done_next_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Далі")],
-        [KeyboardButton(text="Завершити діалог")]
+        [KeyboardButton(text="✅ Далі")],
+        [KeyboardButton(text="⛔ Завершити діалог")]
     ],
     resize_keyboard=True
 )
+
 
 scenario_choice_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Зрозуміти свій стан")],
-        [KeyboardButton(text="Перейти до вправ")],
-        [KeyboardButton(text="Поради на день")],
-        [KeyboardButton(text="Завершити діалог")]
+        [KeyboardButton(text="🧠 Зрозуміти свій стан")],
+        [KeyboardButton(text="🧘 Перейти до вправ")],
+        [KeyboardButton(text="📌 Поради на день")],
+        [KeyboardButton(text="⛔ Завершити діалог")]
     ],
     resize_keyboard=True
 )
 
+
 finish_or_advice_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Завершити діалог")],
-        [KeyboardButton(text="Ще одна порада")]
+        [KeyboardButton(text="💡 Ще одна порада")],
+        [KeyboardButton(text="⛔ Завершити діалог")]
     ],
     resize_keyboard=True
 )
