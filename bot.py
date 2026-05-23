@@ -53,7 +53,6 @@ from buttons import (
     BTN_EXERCISES,
     BTN_DAILY_ADVICE,
     BTN_TO_SURVEY,
-    BTN_STATE_EXPLANATION,
     BTN_WHAT_HELPS,
     BTN_AVOID,
     BTN_PLAN
