@@ -145,7 +145,6 @@ keep_next_keyboard = ReplyKeyboardMarkup(
 
 support_detail_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="🔎 Що зі мною відбувається")],
         [KeyboardButton(text="🛠 Що може допомогти")],
         [KeyboardButton(text="🚫 Чого краще не робити")],
         [KeyboardButton(text="📋 План на 30 хвилин")],
