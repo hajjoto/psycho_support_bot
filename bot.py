@@ -519,14 +519,17 @@ async def protocol_choice(message: Message, state: FSMContext):
     mode = "FULL" if selected in [BTN_FULL, "Повний варіант"] else "SHORT"
 
     protocols = get_protocols(branch, mode)
-    selected_protocol = random.choice(protocols)
-
+    selected_protocol, used_protocol_ids = choose_new_protocol(
+        protocols=protocols,
+        last_protocol_id=None,
+        used_protocol_ids=[]
+    )
     await state.update_data(
         protocol_mode=mode,
         current_protocol=selected_protocol,
         protocol_step=0,
         protocol_attempts=data.get("protocol_attempts", 0) + 1,
-        used_protocol_ids=[selected_protocol.get("id")]
+        used_protocol_ids=used_protocol_ids
     )
 
     if session_id:
@@ -637,21 +640,17 @@ async def protocol_feedback(message: Message, state: FSMContext):
         session_id = data.get("session_id")
         branch = data.get("branch", "UNCLEAR")
         mode = data.get("protocol_mode", "SHORT")
+        current_protocol = data.get("current_protocol")
+        last_protocol_id = current_protocol.get("id") if current_protocol else None
         used_protocol_ids = data.get("used_protocol_ids", [])
 
         protocols = get_protocols(branch, mode)
 
-        available_protocols = [
-            protocol for protocol in protocols
-            if protocol.get("id") not in used_protocol_ids
-        ]
-
-        if not available_protocols:
-            available_protocols = protocols
-            used_protocol_ids = []
-
-        selected_protocol = random.choice(available_protocols)
-        used_protocol_ids.append(selected_protocol.get("id"))
+        selected_protocol, used_protocol_ids = choose_new_protocol(
+            protocols=protocols,
+            last_protocol_id=last_protocol_id,
+            used_protocol_ids=used_protocol_ids
+        )
 
         await state.update_data(
             current_protocol=selected_protocol,
@@ -785,6 +784,30 @@ async def unknown_message(message: Message, state: FSMContext):
             reply_markup=dialog_keyboard
         )
 
+def choose_new_protocol(protocols: list[dict], last_protocol_id: str | None, used_protocol_ids: list[str]) -> tuple[dict, list[str]]:
+    available_protocols = [
+        protocol for protocol in protocols
+        if protocol.get("id") not in used_protocol_ids
+        and protocol.get("id") != last_protocol_id
+    ]
+
+    if not available_protocols:
+        available_protocols = [
+            protocol for protocol in protocols
+            if protocol.get("id") != last_protocol_id
+        ]
+
+    if not available_protocols:
+        available_protocols = protocols
+
+    selected_protocol = random.choice(available_protocols)
+
+    protocol_id = selected_protocol.get("id")
+
+    if protocol_id and protocol_id not in used_protocol_ids:
+        used_protocol_ids.append(protocol_id)
+
+    return selected_protocol, used_protocol_ids
 
 async def main():
     setup_logger()
