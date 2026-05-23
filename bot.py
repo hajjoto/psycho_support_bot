@@ -14,6 +14,7 @@ from logger_config import setup_logger
 from risk_analyzer import is_crisis, analyze_final_risk
 from recommendations import CRISIS_TEXT, get_followup_support, build_summary
 from session_service import create_session_id
+from support_content import get_support_block
 from keyboards import (
     start_time_keyboard,
     urgent_protocol_keyboard,
@@ -26,7 +27,8 @@ from keyboards import (
     protocol_next_keyboard,
     protocol_feedback_keyboard,
     scenario_choice_keyboard,
-    keep_next_keyboard
+    keep_next_keyboard,
+    support_detail_keyboard
 )
 from database import init_db, create_session, save_message, update_session_risk
 from protocols import get_protocols
@@ -50,7 +52,11 @@ from buttons import (
     BTN_UNDERSTAND,
     BTN_EXERCISES,
     BTN_DAILY_ADVICE,
-    BTN_TO_SURVEY
+    BTN_TO_SURVEY,
+    BTN_STATE_EXPLANATION,
+    BTN_WHAT_HELPS,
+    BTN_AVOID,
+    BTN_PLAN
 )
 
 
@@ -421,9 +427,12 @@ async def scenario_choice(message: Message, state: FSMContext):
     risk_level = data.get("risk_level", "LOW")
 
     if selected == BTN_UNDERSTAND:
+        await state.set_state(SupportDialog.support_detail)
+        
         await message.answer(
-            get_state_text_by_risk(risk_level),
-            reply_markup=scenario_choice_keyboard
+            get_support_block(risk_level, "explanation")
+            + "\n\nОберіть, що подивитися далі:",
+            reply_markup=support_detail_keyboard
         )
         return
 
@@ -451,6 +460,46 @@ async def scenario_choice(message: Message, state: FSMContext):
         reply_markup=scenario_choice_keyboard
     )
 
+@dp.message(SupportDialog.support_detail)
+async def support_detail_handler(message: Message, state: FSMContext):
+    selected = button_text(message)
+
+    data = await state.get_data()
+    risk_level = data.get("risk_level", "LOW")
+
+    if selected == BTN_STATE_EXPLANATION:
+        block = "explanation"
+    elif selected == BTN_WHAT_HELPS:
+        block = "helps"
+    elif selected == BTN_AVOID:
+        block = "avoid"
+    elif selected == BTN_PLAN:
+        block = "plan"
+    elif selected == BTN_EXERCISES:
+        await state.set_state(SupportDialog.protocol_choice)
+        await message.answer(
+            "Оберіть формат вправи:",
+            reply_markup=protocol_choice_keyboard
+        )
+        return
+    elif selected == BTN_FINISH:
+        await finish_dialog(
+            message,
+            state,
+            "Діалог завершено. Ви можете почати нову сесію будь-коли."
+        )
+        return
+    else:
+        await message.answer(
+            "Оберіть один із варіантів нижче.",
+            reply_markup=support_detail_keyboard
+        )
+        return
+
+    await message.answer(
+        get_support_block(risk_level, block),
+        reply_markup=support_detail_keyboard
+    )
 
 @dp.message(SupportDialog.protocol_choice)
 async def protocol_choice(message: Message, state: FSMContext):
