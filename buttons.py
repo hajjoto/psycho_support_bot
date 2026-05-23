@@ -5,15 +5,21 @@ BTN_NO_FAST = "Ні, потрібно швидше"
 BTN_NEXT = "Далі"
 BTN_BETTER = "Стало легше"
 BTN_NOT_BETTER = "Не стало легше"
-BTN_REPEAT = "Повторити вправу"
+BTN_REPEAT = "Спробувати іншу вправу"
 BTN_ADVICE = "Ще одна порада"
+BTN_NEW_EXERCISE = "Нова вправа"
 BTN_FINISH = "Завершити діалог"
+BTN_SHORT = "Коротка вправа"
+BTN_FULL = "Повна вправа"
 
 
 def clean_button(text: str) -> str:
+    if not text:
+        return ""
+
     text = text.strip()
 
-    for button in [
+    buttons = [
         BTN_START,
         BTN_RESTART,
         BTN_YES,
@@ -23,8 +29,13 @@ def clean_button(text: str) -> str:
         BTN_NOT_BETTER,
         BTN_REPEAT,
         BTN_ADVICE,
+        BTN_NEW_EXERCISE,
         BTN_FINISH,
-    ]:
+        BTN_SHORT,
+        BTN_FULL,
+    ]
+
+    for button in buttons:
         if text.endswith(button):
             return button
 
