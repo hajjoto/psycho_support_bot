@@ -36,10 +36,12 @@ from keyboards import (
     yes_no_keyboard,
     protocol_choice_keyboard,
     protocol_next_keyboard,
-    protocol_feedback_keyboard
+    protocol_feedback_keyboard,
+    scenario_choice_keyboard
 )
 from database import init_db, create_session, save_message, update_session_risk
 from protocols import get_protocols
+from scenario_texts import get_state_text_by_risk, get_daily_advice_by_risk
 
 
 bot = Bot(token=BOT_TOKEN)
@@ -282,16 +284,82 @@ async def scale_check(message: Message, state: FSMContext):
     data = await state.get_data()
     session_id = data.get("session_id")
 
-    await state.update_data(scale_score=message.text)
+    await state.update_data(
+        scale_score=message.text
+    )
 
     if session_id:
-        await save_message(session_id, "user", message.text, "scale_check")
+        await save_message(
+            session_id,
+            "user",
+            message.text,
+            "scale_check"
+        )
 
-    await state.set_state(SupportDialog.support_check)
+    risk_level = analyze_final_risk({
+        **data,
+        "scale_score": message.text
+    })
+
+    await state.update_data(
+        risk_level=risk_level
+    )
+
+    state_text = get_state_text_by_risk(risk_level)
+
+    await state.set_state(SupportDialog.scenario_choice)
 
     await message.answer(
-        "Чи є зараз поруч людина, якій ви можете написати або подзвонити?",
-        reply_markup=yes_no_keyboard
+        state_text + "\n\n"
+        "Що хочете зробити далі?",
+        reply_markup=scenario_choice_keyboard
+    )
+
+@dp.message(SupportDialog.scenario_choice, F.text == "Зрозуміти свій стан")
+async def explain_state(message: Message, state: FSMContext):
+    data = await state.get_data()
+    risk_level = data.get("risk_level", "LOW")
+
+    await state.set_state(SupportDialog.scenario_choice)
+
+    await message.answer(
+        get_state_text_by_risk(risk_level),
+        reply_markup=scenario_choice_keyboard
+    )
+
+
+@dp.message(SupportDialog.scenario_choice, F.text == "Поради на день")
+async def daily_advice(message: Message, state: FSMContext):
+    data = await state.get_data()
+    risk_level = data.get("risk_level", "LOW")
+
+    await message.answer(
+        get_daily_advice_by_risk(risk_level),
+        reply_markup=scenario_choice_keyboard
+    )
+
+
+@dp.message(SupportDialog.scenario_choice, F.text == "Перейти до вправ")
+async def go_to_protocols(message: Message, state: FSMContext):
+    data = await state.get_data()
+    session_id = data.get("session_id")
+
+    if session_id:
+        await save_message(session_id, "user", message.text, "scenario_choice")
+
+    await state.set_state(SupportDialog.protocol_choice)
+
+    await message.answer(
+        "Оберіть формат вправи:",
+        reply_markup=protocol_choice_keyboard
+    )
+
+
+@dp.message(SupportDialog.scenario_choice)
+async def scenario_choice_wrong(message: Message):
+    await message.answer(
+        "Оберіть один із варіантів нижче.",
+        reply_markup=scenario_choice_keyboard
     )
 
 
