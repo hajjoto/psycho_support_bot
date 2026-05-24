@@ -154,6 +154,26 @@ support_detail_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
+education_intro_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="🧠 Як допомогти собі при стресі")],
+        [KeyboardButton(text="🧘 Перейти до вправ")],
+        [KeyboardButton(text="⛔ Завершити діалог")]
+    ],
+    resize_keyboard=True
+)
+
+
+education_step_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="🛠 Як це застосувати")],
+        [KeyboardButton(text="➡️ Далі")],
+        [KeyboardButton(text="🧘 Перейти до вправ")],
+        [KeyboardButton(text="⛔ Завершити діалог")]
+    ],
+    resize_keyboard=True
+)
+
 finish_or_advice_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="💡 Ще одна порада")],
