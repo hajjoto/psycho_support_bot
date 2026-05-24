@@ -56,7 +56,9 @@ def clean_button(text: str) -> str:
         BTN_TO_SURVEY,
         BTN_WHAT_HELPS,
         BTN_AVOID,
-        BTN_PLAN
+        BTN_PLAN,
+        BTN_SELF_HELP_STRESS,
+        BTN_HOW_APPLY,
     ]
 
     for button in buttons:
