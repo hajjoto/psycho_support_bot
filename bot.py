@@ -795,32 +795,15 @@ async def education_flow_handler(message: Message, state: FSMContext):
     education_blocks = data.get("education_blocks", [])
     step = data.get("education_step", 0)
 
-    if selected == BTN_SELF_HELP_STRESS or selected == BTN_NEXT:
-        if not education_blocks:
-            await state.set_state(SupportDialog.scenario_choice)
-            await message.answer(
-                "Оберіть, що хочете зробити далі.",
-                reply_markup=scenario_choice_keyboard
-            )
-            return
+    if selected == BTN_SELF_HELP_STRESS:
+        step = 0
+        await state.update_data(education_step=step)
 
-        if step >= len(education_blocks):
-            await message.answer(
-                "Це були основні речі, які варто знати про напругу.\n\n"
-                "Тепер можна перейти до вправ або завершити діалог.",
-                reply_markup=education_step_keyboard
-            )
-            return
+    elif selected == BTN_NEXT:
+        step += 1
+        await state.update_data(education_step=step)
 
-        block = education_blocks[step]
-
-        await message.answer(
-            block["title"] + "\n\n" + block["text"],
-            reply_markup=education_step_keyboard
-        )
-        return
-
-    if selected == BTN_HOW_APPLY:
+    elif selected == BTN_HOW_APPLY:
         if not education_blocks:
             await message.answer(
                 "Спочатку відкрийте перший блок.",
@@ -838,16 +821,15 @@ async def education_flow_handler(message: Message, state: FSMContext):
         )
         return
 
-    if selected == BTN_EXERCISES:
+    elif selected == BTN_EXERCISES:
         await state.set_state(SupportDialog.protocol_choice)
-
         await message.answer(
             "Оберіть формат вправи:",
             reply_markup=protocol_choice_keyboard
         )
         return
 
-    if selected == BTN_FINISH:
+    elif selected == BTN_FINISH:
         await finish_dialog(
             message,
             state,
@@ -855,9 +837,34 @@ async def education_flow_handler(message: Message, state: FSMContext):
         )
         return
 
+    else:
+        await message.answer(
+            "Оберіть один із варіантів нижче.",
+            reply_markup=education_intro_keyboard
+        )
+        return
+
+    if not education_blocks:
+        await state.set_state(SupportDialog.scenario_choice)
+        await message.answer(
+            "Оберіть, що хочете зробити далі.",
+            reply_markup=scenario_choice_keyboard
+        )
+        return
+
+    if step >= len(education_blocks):
+        await message.answer(
+            "Це були основні речі, які варто знати про напругу.\n\n"
+            "Тепер можна перейти до вправ або завершити діалог.",
+            reply_markup=education_step_keyboard
+        )
+        return
+
+    block = education_blocks[step]
+
     await message.answer(
-        "Оберіть один із варіантів нижче.",
-        reply_markup=education_intro_keyboard
+        block["title"] + "\n\n" + block["text"],
+        reply_markup=education_step_keyboard
     )
 
 
