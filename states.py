@@ -33,3 +33,5 @@ class SupportDialog(StatesGroup):
     keep_intro = State()
     keep_flow = State()
     support_detail = State()
+    education_flow = State()
+    education_how = State()
