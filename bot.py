@@ -28,11 +28,14 @@ from keyboards import (
     protocol_feedback_keyboard,
     scenario_choice_keyboard,
     keep_next_keyboard,
-    support_detail_keyboard
+    support_detail_keyboard,
+    education_intro_keyboard,
+    education_step_keyboard
 )
 from database import init_db, create_session, save_message, update_session_risk
 from protocols import get_protocols
 from scenario_texts import get_state_text_by_risk, get_daily_advice_by_risk
+from support_education import get_education_blocks
 from bot_commands import BOT_COMMANDS
 from buttons import (
     clean_button,
@@ -55,7 +58,9 @@ from buttons import (
     BTN_TO_SURVEY,
     BTN_WHAT_HELPS,
     BTN_AVOID,
-    BTN_PLAN
+    BTN_PLAN,
+    BTN_SELF_HELP_STRESS,
+    BTN_HOW_APPLY
 )
 
 
@@ -426,12 +431,20 @@ async def scenario_choice(message: Message, state: FSMContext):
     risk_level = data.get("risk_level", "LOW")
 
     if selected == BTN_UNDERSTAND:
-        await state.set_state(SupportDialog.support_detail)
-        
+        education_blocks = get_education_blocks(risk_level)
+
+        await state.update_data(
+            education_blocks=education_blocks,
+            education_step=0
+        )
+
+        await state.set_state(SupportDialog.education_flow)
+
         await message.answer(
-            get_support_block(risk_level, "explanation")
-            + "\n\nОберіть, що подивитися далі:",
-            reply_markup=support_detail_keyboard
+            "Коротко розберемо, що допомагає при напрузі.\n\n"
+            "Це не правила, які треба виконувати ідеально. "
+            "Оберіть те, що вам найпростіше застосовувати.",
+            reply_markup=education_intro_keyboard
         )
         return
 
@@ -772,6 +785,133 @@ async def finished_message(message: Message, state: FSMContext):
     await message.answer(
         "Поточний діалог завершено. Щоб почати заново, натисніть «Почати нову сесію».",
         reply_markup=restart_keyboard
+    )
+
+@dp.message(SupportDialog.education_flow)
+async def education_flow_handler(message: Message, state: FSMContext):
+    selected = button_text(message)
+
+    data = await state.get_data()
+    education_blocks = data.get("education_blocks", [])
+    step = data.get("education_step", 0)
+
+    if selected == BTN_SELF_HELP_STRESS or selected == BTN_NEXT:
+        if not education_blocks:
+            await state.set_state(SupportDialog.scenario_choice)
+            await message.answer(
+                "Оберіть, що хочете зробити далі.",
+                reply_markup=scenario_choice_keyboard
+            )
+            return
+
+        if step >= len(education_blocks):
+            await message.answer(
+                "Це були основні речі, які варто знати про напругу.\n\n"
+                "Тепер можна перейти до вправ або завершити діалог.",
+                reply_markup=education_step_keyboard
+            )
+            return
+
+        block = education_blocks[step]
+
+        await message.answer(
+            block["title"] + "\n\n" + block["text"],
+            reply_markup=education_step_keyboard
+        )
+        return
+
+    if selected == BTN_HOW_APPLY:
+        if not education_blocks:
+            await message.answer(
+                "Спочатку відкрийте перший блок.",
+                reply_markup=education_intro_keyboard
+            )
+            return
+
+        block = education_blocks[step]
+
+        await state.set_state(SupportDialog.education_how)
+
+        await message.answer(
+            block["how"],
+            reply_markup=education_step_keyboard
+        )
+        return
+
+    if selected == BTN_EXERCISES:
+        await state.set_state(SupportDialog.protocol_choice)
+
+        await message.answer(
+            "Оберіть формат вправи:",
+            reply_markup=protocol_choice_keyboard
+        )
+        return
+
+    if selected == BTN_FINISH:
+        await finish_dialog(
+            message,
+            state,
+            "Діалог завершено. Ви можете почати нову сесію будь-коли."
+        )
+        return
+
+    await message.answer(
+        "Оберіть один із варіантів нижче.",
+        reply_markup=education_intro_keyboard
+    )
+
+
+@dp.message(SupportDialog.education_how)
+async def education_how_handler(message: Message, state: FSMContext):
+    selected = button_text(message)
+
+    data = await state.get_data()
+    step = data.get("education_step", 0)
+
+    if selected == BTN_NEXT:
+        await state.update_data(education_step=step + 1)
+        await state.set_state(SupportDialog.education_flow)
+
+        data = await state.get_data()
+        education_blocks = data.get("education_blocks", [])
+        next_step = data.get("education_step", 0)
+
+        if next_step >= len(education_blocks):
+            await message.answer(
+                "Це були основні речі, які варто знати про напругу.\n\n"
+                "Можете перейти до вправ або завершити діалог.",
+                reply_markup=education_step_keyboard
+            )
+            return
+
+        block = education_blocks[next_step]
+
+        await message.answer(
+            block["title"] + "\n\n" + block["text"],
+            reply_markup=education_step_keyboard
+        )
+        return
+
+    if selected == BTN_EXERCISES:
+        await state.set_state(SupportDialog.protocol_choice)
+
+        await message.answer(
+            "Оберіть формат вправи:",
+            reply_markup=protocol_choice_keyboard
+        )
+        return
+
+    if selected == BTN_FINISH:
+        await finish_dialog(
+            message,
+            state,
+            "Діалог завершено. Ви можете почати нову сесію будь-коли."
+        )
+        return
+
+    await message.answer(
+        "Натисніть «Далі», щоб перейти до наступного блоку.",
+        reply_markup=education_step_keyboard
     )
 
 
