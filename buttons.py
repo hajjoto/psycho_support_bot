@@ -22,6 +22,8 @@ BTN_TO_SURVEY = "Перейти до опитування"
 BTN_WHAT_HELPS = "Що може допомогти"
 BTN_AVOID = "Чого краще не робити"
 BTN_PLAN = "План на 30 хвилин"
+BTN_SELF_HELP_STRESS = "Як допомогти собі при стресі"
+BTN_HOW_APPLY = "Як це застосувати"
 
 
 def clean_button(text: str) -> str:
