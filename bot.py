@@ -32,7 +32,15 @@ from keyboards import (
     education_intro_keyboard,
     education_step_keyboard
 )
-from database import init_db, create_session, save_message, update_session_risk
+from database import (
+    init_db,
+    create_session,
+    save_message,
+    update_session_risk,
+    save_assessment,
+    save_protocol_run,
+    save_review as save_review_to_db
+)
 from protocols import get_protocols
 from scenario_texts import get_state_text_by_risk, get_daily_advice_by_risk
 from support_education import get_education_blocks
@@ -76,19 +84,19 @@ KEEP_STEPS = [
         "Тому краще підготувати для себе прості способи заздалегідь."
     ),
     (
-        "1. Закріпіть бота у верхній частині чатів\n\n"
+        "Закріпіть бота у верхній частині чатів\n\n"
         "Коли напруга зростає, складніше щось шукати й згадувати.\n"
         "Якщо бот буде зверху списку чатів - повернутися до вправ буде простіше.\n\n"
         "Для цього затисніть чат і оберіть «Закріпити»."
     ),
     (
-        "2. Створіть короткий сигнал-нагадування\n\n"
+        "Створіть короткий сигнал-нагадування\n\n"
         "Можна поставити нагадування в телефоні на вечір або перед складними подіями.\n\n"
         "Навіть 5 хвилин повільного дихання чи стабілізації перед напруженим моментом "
         "часто допомагають легше його пройти."
     ),
     (
-        "3. Використовуйте техніки не тільки в кризі\n\n"
+        "Використовуйте техніки не тільки в кризі\n\n"
         "Нервова система краще запамʼятовує вправи, якщо використовувати їх "
         "не лише під час сильного перевантаження.\n\n"
         "Якщо іноді робити короткі вправи у звичайному стані - "
@@ -118,6 +126,35 @@ def normalize_scale(text: str) -> str:
         return "1-5"
 
     return text.strip()
+
+
+def choose_new_protocol(
+    protocols: list[dict],
+    last_protocol_id: str | None,
+    used_protocol_ids: list[str]
+) -> tuple[dict, list[str]]:
+    available_protocols = [
+        protocol for protocol in protocols
+        if protocol.get("id") not in used_protocol_ids
+        and protocol.get("id") != last_protocol_id
+    ]
+
+    if not available_protocols:
+        available_protocols = [
+            protocol for protocol in protocols
+            if protocol.get("id") != last_protocol_id
+        ]
+
+    if not available_protocols:
+        available_protocols = protocols
+
+    selected_protocol = random.choice(available_protocols)
+    protocol_id = selected_protocol.get("id")
+
+    if protocol_id and protocol_id not in used_protocol_ids:
+        used_protocol_ids.append(protocol_id)
+
+    return selected_protocol, used_protocol_ids
 
 
 async def finish_dialog(message: Message, state: FSMContext, text: str):
@@ -206,8 +243,13 @@ async def review_command(message: Message, state: FSMContext):
 
 
 @dp.message(SupportDialog.review_waiting)
-async def save_review(message: Message, state: FSMContext):
+async def save_review_handler(message: Message, state: FSMContext):
+    data = await state.get_data()
+    session_id = data.get("session_id")
+
     logging.info(f"NEW REVIEW: {message.text}")
+
+    await save_review_to_db(session_id, message.text or "")
 
     await state.clear()
 
@@ -279,7 +321,7 @@ async def process_consent(message: Message, state: FSMContext):
     logging.info(f"New anonymous session created: {session_id}")
 
     await message.answer(
-        "Чи можете ви приділити собі пару хвилини?",
+        "Чи можете ви приділити собі пару хвилин?",
         reply_markup=start_time_keyboard
     )
 
@@ -352,7 +394,7 @@ async def start_time_choice(message: Message, state: FSMContext):
     session_id = data.get("session_id")
 
     if session_id:
-        await save_message(session_id, "user", message.text, "start_time_choice")
+        await save_message(session_id, "user", message.text or "", "start_time_choice")
 
     if selected == BTN_YES or "Так" in (message.text or ""):
         await state.set_state(SupportDialog.scale_check)
@@ -388,7 +430,7 @@ async def scale_check(message: Message, state: FSMContext):
     if await crisis_intercept(message, state):
         return
 
-    scale_score = normalize_scale(message.text)
+    scale_score = normalize_scale(message.text or "")
 
     if scale_score not in ["1-5", "6-8", "9-10"]:
         await message.answer(
@@ -400,17 +442,19 @@ async def scale_check(message: Message, state: FSMContext):
     data = await state.get_data()
     session_id = data.get("session_id")
 
-    await state.update_data(scale_score=scale_score)
-
-    if session_id:
-        await save_message(session_id, "user", message.text, "scale_check")
-
     risk_level = analyze_final_risk({
         **data,
         "scale_score": scale_score
     })
 
-    await state.update_data(risk_level=risk_level)
+    await state.update_data(
+        scale_score=scale_score,
+        risk_level=risk_level
+    )
+
+    if session_id:
+        await save_message(session_id, "user", message.text or "", "scale_check")
+        await save_assessment(session_id, scale_score, risk_level)
 
     state_text = get_state_text_by_risk(risk_level)
 
@@ -457,7 +501,7 @@ async def scenario_choice(message: Message, state: FSMContext):
 
     if selected == BTN_EXERCISES:
         if session_id:
-            await save_message(session_id, "user", message.text, "scenario_choice")
+            await save_message(session_id, "user", message.text or "", "scenario_choice")
 
         await state.set_state(SupportDialog.protocol_choice)
 
@@ -472,6 +516,7 @@ async def scenario_choice(message: Message, state: FSMContext):
         reply_markup=scenario_choice_keyboard
     )
 
+
 @dp.message(SupportDialog.support_detail)
 async def support_detail_handler(message: Message, state: FSMContext):
     selected = button_text(message)
@@ -481,13 +526,10 @@ async def support_detail_handler(message: Message, state: FSMContext):
 
     if selected == BTN_WHAT_HELPS:
         block = "helps"
-
     elif selected == BTN_AVOID:
         block = "avoid"
-
     elif selected == BTN_PLAN:
         block = "plan"
-
     elif selected == BTN_EXERCISES:
         await state.set_state(SupportDialog.protocol_choice)
 
@@ -496,7 +538,6 @@ async def support_detail_handler(message: Message, state: FSMContext):
             reply_markup=protocol_choice_keyboard
         )
         return
-
     elif selected == BTN_FINISH:
         await finish_dialog(
             message,
@@ -504,7 +545,6 @@ async def support_detail_handler(message: Message, state: FSMContext):
             "Діалог завершено. Ви можете почати нову сесію будь-коли."
         )
         return
-
     else:
         await message.answer(
             "Оберіть один із варіантів нижче.",
@@ -516,6 +556,7 @@ async def support_detail_handler(message: Message, state: FSMContext):
         get_support_block(risk_level, block),
         reply_markup=support_detail_keyboard
     )
+
 
 @dp.message(SupportDialog.protocol_choice)
 async def protocol_choice(message: Message, state: FSMContext):
@@ -533,24 +574,34 @@ async def protocol_choice(message: Message, state: FSMContext):
     branch = data.get("branch", "UNCLEAR")
 
     mode = "FULL" if selected in [BTN_FULL, "Повний варіант"] else "SHORT"
+    attempt_number = data.get("protocol_attempts", 0) + 1
 
     protocols = get_protocols(branch, mode)
+
     selected_protocol, used_protocol_ids = choose_new_protocol(
         protocols=protocols,
         last_protocol_id=None,
         used_protocol_ids=[]
     )
+
     await state.update_data(
         protocol_mode=mode,
         current_protocol=selected_protocol,
         protocol_step=0,
-        protocol_attempts=data.get("protocol_attempts", 0) + 1,
+        protocol_attempts=attempt_number,
         used_protocol_ids=used_protocol_ids
     )
 
     if session_id:
-        await save_message(session_id, "user", message.text, "protocol_choice")
+        await save_message(session_id, "user", message.text or "", "protocol_choice")
         await save_message(session_id, "bot", selected_protocol["steps"][0], "protocol_step_0")
+        await save_protocol_run(
+            session_id=session_id,
+            protocol_id=selected_protocol.get("id", "unknown"),
+            protocol_mode=mode,
+            attempt_number=attempt_number,
+            result=None
+        )
 
     await state.set_state(SupportDialog.protocol_running)
 
@@ -591,7 +642,7 @@ async def protocol_running(message: Message, state: FSMContext):
     next_step = step + 1
 
     if session_id:
-        await save_message(session_id, "user", message.text, "protocol_next")
+        await save_message(session_id, "user", message.text or "", "protocol_next")
 
     if next_step >= len(protocol["steps"]):
         await state.set_state(SupportDialog.protocol_feedback)
@@ -619,10 +670,13 @@ async def protocol_running(message: Message, state: FSMContext):
 async def protocol_feedback(message: Message, state: FSMContext):
     selected = button_text(message)
 
-    if selected == BTN_BETTER:
-        data = await state.get_data()
-        session_id = data.get("session_id")
+    data = await state.get_data()
+    session_id = data.get("session_id")
+    current_protocol = data.get("current_protocol", {})
+    protocol_mode = data.get("protocol_mode", "UNKNOWN")
+    attempt_number = data.get("protocol_attempts", 1)
 
+    if selected == BTN_BETTER:
         risk_level = analyze_final_risk(data)
 
         await state.update_data(risk_level=risk_level)
@@ -638,8 +692,15 @@ async def protocol_feedback(message: Message, state: FSMContext):
         )
 
         if session_id:
-            await save_message(session_id, "user", message.text, "protocol_feedback")
+            await save_message(session_id, "user", message.text or "", "protocol_feedback")
             await save_message(session_id, "bot", answer_text, "ready_to_finish")
+            await save_protocol_run(
+                session_id=session_id,
+                protocol_id=current_protocol.get("id", "unknown"),
+                protocol_mode=protocol_mode,
+                attempt_number=attempt_number,
+                result="became_better"
+            )
             await update_session_risk(session_id, risk_level, "stabilized")
 
         await state.set_state(SupportDialog.ready_to_finish)
@@ -651,12 +712,8 @@ async def protocol_feedback(message: Message, state: FSMContext):
         return
 
     if selected == BTN_REPEAT:
-        data = await state.get_data()
-
-        session_id = data.get("session_id")
         branch = data.get("branch", "UNCLEAR")
         mode = data.get("protocol_mode", "SHORT")
-        current_protocol = data.get("current_protocol")
         last_protocol_id = current_protocol.get("id") if current_protocol else None
         used_protocol_ids = data.get("used_protocol_ids", [])
 
@@ -668,16 +725,25 @@ async def protocol_feedback(message: Message, state: FSMContext):
             used_protocol_ids=used_protocol_ids
         )
 
+        new_attempt_number = data.get("protocol_attempts", 0) + 1
+
         await state.update_data(
             current_protocol=selected_protocol,
             protocol_step=0,
             used_protocol_ids=used_protocol_ids,
-            protocol_attempts=data.get("protocol_attempts", 0) + 1
+            protocol_attempts=new_attempt_number
         )
 
         if session_id:
-            await save_message(session_id, "user", message.text, "protocol_repeat")
+            await save_message(session_id, "user", message.text or "", "protocol_repeat")
             await save_message(session_id, "bot", selected_protocol["steps"][0], "protocol_step_0_repeat")
+            await save_protocol_run(
+                session_id=session_id,
+                protocol_id=selected_protocol.get("id", "unknown"),
+                protocol_mode=mode,
+                attempt_number=new_attempt_number,
+                result=None
+            )
 
         await state.set_state(SupportDialog.protocol_running)
 
@@ -688,7 +754,15 @@ async def protocol_feedback(message: Message, state: FSMContext):
         return
 
     if selected == BTN_NOT_BETTER:
-        data = await state.get_data()
+        if session_id:
+            await save_protocol_run(
+                session_id=session_id,
+                protocol_id=current_protocol.get("id", "unknown"),
+                protocol_mode=protocol_mode,
+                attempt_number=attempt_number,
+                result="not_better"
+            )
+
         attempts = data.get("protocol_attempts", 1)
 
         if attempts >= 2:
@@ -739,7 +813,7 @@ async def ready_to_finish(message: Message, state: FSMContext):
         await state.update_data(used_support_types=used_types)
 
         if session_id:
-            await save_message(session_id, "user", message.text, "ready_to_finish")
+            await save_message(session_id, "user", message.text or "", "ready_to_finish")
             await save_message(session_id, "bot", advice, "extra_advice")
 
         await message.answer(
@@ -763,7 +837,7 @@ async def ready_to_finish(message: Message, state: FSMContext):
         session_id = data.get("session_id")
 
         if session_id:
-            await save_message(session_id, "user", message.text, "ready_to_finish")
+            await save_message(session_id, "user", message.text or "", "ready_to_finish")
             await save_message(session_id, "bot", summary, "summary")
             await update_session_risk(session_id, data.get("risk_level", "LOW"), "finished")
 
@@ -775,17 +849,6 @@ async def ready_to_finish(message: Message, state: FSMContext):
         reply_markup=finish_or_advice_keyboard
     )
 
-
-@dp.message(SupportDialog.finished)
-async def finished_message(message: Message, state: FSMContext):
-    if button_text(message) == BTN_RESTART:
-        await start(message, state)
-        return
-
-    await message.answer(
-        "Поточний діалог завершено. Щоб почати заново, натисніть «Почати нову сесію».",
-        reply_markup=restart_keyboard
-    )
 
 @dp.message(SupportDialog.education_flow)
 async def education_flow_handler(message: Message, state: FSMContext):
@@ -823,6 +886,7 @@ async def education_flow_handler(message: Message, state: FSMContext):
 
     elif selected == BTN_EXERCISES:
         await state.set_state(SupportDialog.protocol_choice)
+
         await message.answer(
             "Оберіть формат вправи:",
             reply_markup=protocol_choice_keyboard
@@ -846,6 +910,7 @@ async def education_flow_handler(message: Message, state: FSMContext):
 
     if not education_blocks:
         await state.set_state(SupportDialog.scenario_choice)
+
         await message.answer(
             "Оберіть, що хочете зробити далі.",
             reply_markup=scenario_choice_keyboard
@@ -922,6 +987,18 @@ async def education_how_handler(message: Message, state: FSMContext):
     )
 
 
+@dp.message(SupportDialog.finished)
+async def finished_message(message: Message, state: FSMContext):
+    if button_text(message) == BTN_RESTART:
+        await start(message, state)
+        return
+
+    await message.answer(
+        "Поточний діалог завершено. Щоб почати заново, натисніть «Почати нову сесію».",
+        reply_markup=restart_keyboard
+    )
+
+
 @dp.message()
 async def unknown_message(message: Message, state: FSMContext):
     current_state = await state.get_state()
@@ -934,30 +1011,6 @@ async def unknown_message(message: Message, state: FSMContext):
             reply_markup=dialog_keyboard
         )
 
-def choose_new_protocol(protocols: list[dict], last_protocol_id: str | None, used_protocol_ids: list[str]) -> tuple[dict, list[str]]:
-    available_protocols = [
-        protocol for protocol in protocols
-        if protocol.get("id") not in used_protocol_ids
-        and protocol.get("id") != last_protocol_id
-    ]
-
-    if not available_protocols:
-        available_protocols = [
-            protocol for protocol in protocols
-            if protocol.get("id") != last_protocol_id
-        ]
-
-    if not available_protocols:
-        available_protocols = protocols
-
-    selected_protocol = random.choice(available_protocols)
-
-    protocol_id = selected_protocol.get("id")
-
-    if protocol_id and protocol_id not in used_protocol_ids:
-        used_protocol_ids.append(protocol_id)
-
-    return selected_protocol, used_protocol_ids
 
 async def main():
     setup_logger()
