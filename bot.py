@@ -157,6 +157,26 @@ def choose_new_protocol(
     return selected_protocol, used_protocol_ids
 
 
+async def ensure_session(state: FSMContext) -> str:
+    data = await state.get_data()
+    session_id = data.get("session_id")
+
+    if session_id:
+        return session_id
+
+    session_id = create_session_id()
+    await create_session(session_id)
+
+    await state.update_data(
+        session_id=session_id,
+        branch="UNCLEAR"
+    )
+
+    logging.info(f"New anonymous session created: {session_id}")
+
+    return session_id
+
+
 async def finish_dialog(message: Message, state: FSMContext, text: str):
     data = await state.get_data()
     session_id = data.get("session_id")
@@ -183,13 +203,11 @@ async def crisis_intercept(message: Message, state: FSMContext) -> bool:
     if not is_crisis(message.text):
         return False
 
-    data = await state.get_data()
-    session_id = data.get("session_id")
+    session_id = await ensure_session(state)
 
-    if session_id:
-        await save_message(session_id, "user", message.text, "crisis_intercept")
-        await save_message(session_id, "bot", CRISIS_TEXT, "crisis_mode")
-        await update_session_risk(session_id, "HIGH", "crisis")
+    await save_message(session_id, "user", message.text, "crisis_intercept")
+    await save_message(session_id, "bot", CRISIS_TEXT, "crisis_mode")
+    await update_session_risk(session_id, "HIGH", "crisis")
 
     await state.update_data(risk_level="HIGH")
     await state.set_state(SupportDialog.crisis_mode)
@@ -223,6 +241,8 @@ async def start(message: Message, state: FSMContext):
 
 @dp.message(Command("keep"))
 async def keep_command(message: Message, state: FSMContext):
+    await ensure_session(state)
+
     await state.set_state(SupportDialog.keep_flow)
     await state.update_data(keep_step=0)
 
@@ -234,6 +254,8 @@ async def keep_command(message: Message, state: FSMContext):
 
 @dp.message(Command("review"))
 async def review_command(message: Message, state: FSMContext):
+    await ensure_session(state)
+
     await state.set_state(SupportDialog.review_waiting)
 
     await message.answer(
@@ -308,17 +330,11 @@ async def process_consent(message: Message, state: FSMContext):
         )
         return
 
-    session_id = create_session_id()
-    await create_session(session_id)
-
-    await state.update_data(
-        session_id=session_id,
-        branch="UNCLEAR"
-    )
+    session_id = await ensure_session(state)
 
     await state.set_state(SupportDialog.start_time_choice)
 
-    logging.info(f"New anonymous session created: {session_id}")
+    await save_message(session_id, "user", message.text or "", "consent")
 
     await message.answer(
         "Чи можете ви приділити собі пару хвилин?",
@@ -331,6 +347,8 @@ async def keep_flow_handler(message: Message, state: FSMContext):
     selected = button_text(message)
 
     if selected == BTN_TO_SURVEY:
+        await ensure_session(state)
+
         await state.set_state(SupportDialog.scale_check)
 
         await message.answer(
@@ -390,11 +408,9 @@ async def manual_finish(message: Message, state: FSMContext):
 async def start_time_choice(message: Message, state: FSMContext):
     selected = button_text(message)
 
-    data = await state.get_data()
-    session_id = data.get("session_id")
+    session_id = await ensure_session(state)
 
-    if session_id:
-        await save_message(session_id, "user", message.text or "", "start_time_choice")
+    await save_message(session_id, "user", message.text or "", "start_time_choice")
 
     if selected == BTN_YES or "Так" in (message.text or ""):
         await state.set_state(SupportDialog.scale_check)
@@ -440,7 +456,7 @@ async def scale_check(message: Message, state: FSMContext):
         return
 
     data = await state.get_data()
-    session_id = data.get("session_id")
+    session_id = await ensure_session(state)
 
     risk_level = analyze_final_risk({
         **data,
@@ -452,9 +468,8 @@ async def scale_check(message: Message, state: FSMContext):
         risk_level=risk_level
     )
 
-    if session_id:
-        await save_message(session_id, "user", message.text or "", "scale_check")
-        await save_assessment(session_id, scale_score, risk_level)
+    await save_message(session_id, "user", message.text or "", "scale_check")
+    await save_assessment(session_id, scale_score, risk_level)
 
     state_text = get_state_text_by_risk(risk_level)
 
@@ -471,11 +486,13 @@ async def scenario_choice(message: Message, state: FSMContext):
     selected = button_text(message)
 
     data = await state.get_data()
-    session_id = data.get("session_id")
+    session_id = await ensure_session(state)
     risk_level = data.get("risk_level", "LOW")
 
     if selected == BTN_UNDERSTAND:
         education_blocks = get_education_blocks(risk_level)
+
+        await save_message(session_id, "user", message.text or "", "scenario_choice_education")
 
         await state.update_data(
             education_blocks=education_blocks,
@@ -493,6 +510,8 @@ async def scenario_choice(message: Message, state: FSMContext):
         return
 
     if selected == BTN_DAILY_ADVICE:
+        await save_message(session_id, "user", message.text or "", "scenario_choice_daily_advice")
+
         await message.answer(
             get_daily_advice_by_risk(risk_level),
             reply_markup=scenario_choice_keyboard
@@ -500,8 +519,7 @@ async def scenario_choice(message: Message, state: FSMContext):
         return
 
     if selected == BTN_EXERCISES:
-        if session_id:
-            await save_message(session_id, "user", message.text or "", "scenario_choice")
+        await save_message(session_id, "user", message.text or "", "scenario_choice_exercises")
 
         await state.set_state(SupportDialog.protocol_choice)
 
@@ -570,7 +588,7 @@ async def protocol_choice(message: Message, state: FSMContext):
         return
 
     data = await state.get_data()
-    session_id = data.get("session_id")
+    session_id = await ensure_session(state)
     branch = data.get("branch", "UNCLEAR")
 
     mode = "FULL" if selected in [BTN_FULL, "Повний варіант"] else "SHORT"
@@ -592,16 +610,16 @@ async def protocol_choice(message: Message, state: FSMContext):
         used_protocol_ids=used_protocol_ids
     )
 
-    if session_id:
-        await save_message(session_id, "user", message.text or "", "protocol_choice")
-        await save_message(session_id, "bot", selected_protocol["steps"][0], "protocol_step_0")
-        await save_protocol_run(
-            session_id=session_id,
-            protocol_id=selected_protocol.get("id", "unknown"),
-            protocol_mode=mode,
-            attempt_number=attempt_number,
-            result=None
-        )
+    await save_message(session_id, "user", message.text or "", "protocol_choice")
+    await save_message(session_id, "bot", selected_protocol["steps"][0], "protocol_step_0")
+
+    await save_protocol_run(
+        session_id=session_id,
+        protocol_id=selected_protocol.get("id", "unknown"),
+        protocol_mode=mode,
+        attempt_number=attempt_number,
+        result=None
+    )
 
     await state.set_state(SupportDialog.protocol_running)
 
@@ -626,7 +644,7 @@ async def protocol_running(message: Message, state: FSMContext):
         return
 
     data = await state.get_data()
-    session_id = data.get("session_id")
+    session_id = await ensure_session(state)
     protocol = data.get("current_protocol")
     step = data.get("protocol_step", 0)
 
@@ -641,8 +659,7 @@ async def protocol_running(message: Message, state: FSMContext):
 
     next_step = step + 1
 
-    if session_id:
-        await save_message(session_id, "user", message.text or "", "protocol_next")
+    await save_message(session_id, "user", message.text or "", "protocol_next")
 
     if next_step >= len(protocol["steps"]):
         await state.set_state(SupportDialog.protocol_feedback)
@@ -657,8 +674,7 @@ async def protocol_running(message: Message, state: FSMContext):
 
     step_text = protocol["steps"][next_step]
 
-    if session_id:
-        await save_message(session_id, "bot", step_text, f"protocol_step_{next_step}")
+    await save_message(session_id, "bot", step_text, f"protocol_step_{next_step}")
 
     await message.answer(
         step_text,
@@ -671,7 +687,7 @@ async def protocol_feedback(message: Message, state: FSMContext):
     selected = button_text(message)
 
     data = await state.get_data()
-    session_id = data.get("session_id")
+    session_id = await ensure_session(state)
     current_protocol = data.get("current_protocol", {})
     protocol_mode = data.get("protocol_mode", "UNKNOWN")
     attempt_number = data.get("protocol_attempts", 1)
@@ -691,17 +707,18 @@ async def protocol_feedback(message: Message, state: FSMContext):
             "Можете завершити діалог або отримати ще одну коротку пораду."
         )
 
-        if session_id:
-            await save_message(session_id, "user", message.text or "", "protocol_feedback")
-            await save_message(session_id, "bot", answer_text, "ready_to_finish")
-            await save_protocol_run(
-                session_id=session_id,
-                protocol_id=current_protocol.get("id", "unknown"),
-                protocol_mode=protocol_mode,
-                attempt_number=attempt_number,
-                result="became_better"
-            )
-            await update_session_risk(session_id, risk_level, "stabilized")
+        await save_message(session_id, "user", message.text or "", "protocol_feedback")
+        await save_message(session_id, "bot", answer_text, "ready_to_finish")
+
+        await save_protocol_run(
+            session_id=session_id,
+            protocol_id=current_protocol.get("id", "unknown"),
+            protocol_mode=protocol_mode,
+            attempt_number=attempt_number,
+            result="became_better"
+        )
+
+        await update_session_risk(session_id, risk_level, "stabilized")
 
         await state.set_state(SupportDialog.ready_to_finish)
 
@@ -734,16 +751,16 @@ async def protocol_feedback(message: Message, state: FSMContext):
             protocol_attempts=new_attempt_number
         )
 
-        if session_id:
-            await save_message(session_id, "user", message.text or "", "protocol_repeat")
-            await save_message(session_id, "bot", selected_protocol["steps"][0], "protocol_step_0_repeat")
-            await save_protocol_run(
-                session_id=session_id,
-                protocol_id=selected_protocol.get("id", "unknown"),
-                protocol_mode=mode,
-                attempt_number=new_attempt_number,
-                result=None
-            )
+        await save_message(session_id, "user", message.text or "", "protocol_repeat")
+        await save_message(session_id, "bot", selected_protocol["steps"][0], "protocol_step_0_repeat")
+
+        await save_protocol_run(
+            session_id=session_id,
+            protocol_id=selected_protocol.get("id", "unknown"),
+            protocol_mode=mode,
+            attempt_number=new_attempt_number,
+            result=None
+        )
 
         await state.set_state(SupportDialog.protocol_running)
 
@@ -754,14 +771,13 @@ async def protocol_feedback(message: Message, state: FSMContext):
         return
 
     if selected == BTN_NOT_BETTER:
-        if session_id:
-            await save_protocol_run(
-                session_id=session_id,
-                protocol_id=current_protocol.get("id", "unknown"),
-                protocol_mode=protocol_mode,
-                attempt_number=attempt_number,
-                result="not_better"
-            )
+        await save_protocol_run(
+            session_id=session_id,
+            protocol_id=current_protocol.get("id", "unknown"),
+            protocol_mode=protocol_mode,
+            attempt_number=attempt_number,
+            result="not_better"
+        )
 
         attempts = data.get("protocol_attempts", 1)
 
@@ -799,7 +815,7 @@ async def ready_to_finish(message: Message, state: FSMContext):
 
     if selected == BTN_ADVICE:
         data = await state.get_data()
-        session_id = data.get("session_id")
+        session_id = await ensure_session(state)
 
         used_types = data.get("used_support_types", [])
 
@@ -812,9 +828,8 @@ async def ready_to_finish(message: Message, state: FSMContext):
 
         await state.update_data(used_support_types=used_types)
 
-        if session_id:
-            await save_message(session_id, "user", message.text or "", "ready_to_finish")
-            await save_message(session_id, "bot", advice, "extra_advice")
+        await save_message(session_id, "user", message.text or "", "ready_to_finish")
+        await save_message(session_id, "bot", advice, "extra_advice")
 
         await message.answer(
             advice,
@@ -833,13 +848,12 @@ async def ready_to_finish(message: Message, state: FSMContext):
 
     if selected == BTN_FINISH:
         data = await state.get_data()
+        session_id = await ensure_session(state)
         summary = build_summary(data)
-        session_id = data.get("session_id")
 
-        if session_id:
-            await save_message(session_id, "user", message.text or "", "ready_to_finish")
-            await save_message(session_id, "bot", summary, "summary")
-            await update_session_risk(session_id, data.get("risk_level", "LOW"), "finished")
+        await save_message(session_id, "user", message.text or "", "ready_to_finish")
+        await save_message(session_id, "bot", summary, "summary")
+        await update_session_risk(session_id, data.get("risk_level", "LOW"), "finished")
 
         await finish_dialog(message, state, summary)
         return
