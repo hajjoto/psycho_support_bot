@@ -37,6 +37,26 @@ async def init_db():
         """)
 
         await conn.execute("""
+            ALTER TABLE sessions
+            ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+        """)
+
+        await conn.execute("""
+            ALTER TABLE sessions
+            ADD COLUMN IF NOT EXISTS finished_at TIMESTAMPTZ;
+        """)
+
+        await conn.execute("""
+            ALTER TABLE sessions
+            ADD COLUMN IF NOT EXISTS risk_level TEXT NOT NULL DEFAULT 'UNKNOWN';
+        """)
+
+        await conn.execute("""
+            ALTER TABLE sessions
+            ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';
+        """)
+
+        await conn.execute("""
             CREATE TABLE IF NOT EXISTS messages (
                 id BIGSERIAL PRIMARY KEY,
                 session_id TEXT NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
@@ -45,6 +65,16 @@ async def init_db():
                 stage TEXT,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             );
+        """)
+
+        await conn.execute("""
+            ALTER TABLE messages
+            ADD COLUMN IF NOT EXISTS stage TEXT;
+        """)
+
+        await conn.execute("""
+            ALTER TABLE messages
+            ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
         """)
 
         await conn.execute("""
@@ -84,7 +114,11 @@ async def create_session(session_id: str):
 
     async with pool.acquire() as conn:
         await conn.execute("""
-            INSERT INTO sessions (session_id, risk_level, status)
+            INSERT INTO sessions (
+                session_id,
+                risk_level,
+                status
+            )
             VALUES ($1, 'UNKNOWN', 'active')
             ON CONFLICT (session_id) DO NOTHING;
         """, session_id)
@@ -111,22 +145,40 @@ async def update_session_risk(session_id: str, risk_level: str, status: str):
             """, risk_level, status, session_id)
 
 
-async def save_message(session_id: str, role: str, text: str, stage: str | None = None):
+async def save_message(
+    session_id: str,
+    role: str,
+    text: str,
+    stage: str | None = None
+):
     pool = await get_pool()
 
     async with pool.acquire() as conn:
         await conn.execute("""
-            INSERT INTO messages (session_id, role, text, stage)
+            INSERT INTO messages (
+                session_id,
+                role,
+                text,
+                stage
+            )
             VALUES ($1, $2, $3, $4);
         """, session_id, role, text, stage)
 
 
-async def save_assessment(session_id: str, scale_score: str, risk_level: str):
+async def save_assessment(
+    session_id: str,
+    scale_score: str,
+    risk_level: str
+):
     pool = await get_pool()
 
     async with pool.acquire() as conn:
         await conn.execute("""
-            INSERT INTO assessments (session_id, scale_score, risk_level)
+            INSERT INTO assessments (
+                session_id,
+                scale_score,
+                risk_level
+            )
             VALUES ($1, $2, $3);
         """, session_id, scale_score, risk_level)
 
@@ -153,11 +205,25 @@ async def save_protocol_run(
         """, session_id, protocol_id, protocol_mode, attempt_number, result)
 
 
-async def save_review(session_id: str | None, review_text: str):
+async def save_review(
+    session_id: str | None,
+    review_text: str
+):
     pool = await get_pool()
 
     async with pool.acquire() as conn:
         await conn.execute("""
-            INSERT INTO reviews (session_id, review_text)
+            INSERT INTO reviews (
+                session_id,
+                review_text
+            )
             VALUES ($1, $2);
         """, session_id, review_text)
+
+
+async def close_pool():
+    global _pool
+
+    if _pool is not None:
+        await _pool.close()
+        _pool = None
