@@ -75,6 +75,20 @@ from buttons import (
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
+async def main():
+    setup_logger()
+    logging.info("Bot started")
+
+    await init_db()
+    logging.info("Database initialized")
+
+    await bot.set_my_commands(BOT_COMMANDS)
+
+    await dp.start_polling(bot)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
 
 KEEP_STEPS = [
     (
@@ -1024,19 +1038,3 @@ async def unknown_message(message: Message, state: FSMContext):
             "Продовжіть відповідати на поточне питання або натисніть «Завершити діалог».",
             reply_markup=dialog_keyboard
         )
-
-
-async def main():
-    setup_logger()
-    logging.info("Bot started")
-
-    await init_db()
-    logging.info("Database initialized")
-
-    await bot.set_my_commands(BOT_COMMANDS)
-
-    await dp.start_polling(bot)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
